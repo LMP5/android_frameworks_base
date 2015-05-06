@@ -334,14 +334,8 @@
     <java-symbol type="string" name="quick_settings_tile_flashlight_not_title" />
     <java-symbol type="string" name="quick_settings_tile_flashlight_not_summary" />
     <java-symbol type="drawable" name="ic_signal_flashlight_disable" />
-<<<<<<< HEAD
-=======
     
     <!-- Package Manager -->
     <java-symbol type="array" name="config_disabledComponents" />
     <java-symbol type="array" name="config_forceEnabledComponents" />
->>>>>>> parent of 42b9e02... upstream
-
-    <!-- Quick Settings tile defaults -->
-    <java-symbol type="string" name="config_defaultQuickSettingsTiles" />
 </resources>
