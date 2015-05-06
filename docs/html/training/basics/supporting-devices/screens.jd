@@ -1,8 +1,12 @@
 page.title=Supporting Different Screens
-page.tags=layouts
-helpoutsWidget=true
+parent.title=Supporting Different Devices
+parent.link=index.html
 
 trainingnavtop=true
+previous.title=Supporting Different Languages
+previous.link=languages.html
+next.title=Supporting Different Platform Versions
+next.link=platforms.html
 
 @jd:body
 

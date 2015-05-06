@@ -191,8 +191,8 @@ public class PermissionMonitor {
         }
         try {
             if (add) {
-                mNetd.setPermission("NETWORK", toIntArray(network));
-                mNetd.setPermission("SYSTEM", toIntArray(system));
+                mNetd.setPermission(CHANGE_NETWORK_STATE, toIntArray(network));
+                mNetd.setPermission(CONNECTIVITY_INTERNAL, toIntArray(system));
             } else {
                 mNetd.clearPermission(toIntArray(network));
                 mNetd.clearPermission(toIntArray(system));

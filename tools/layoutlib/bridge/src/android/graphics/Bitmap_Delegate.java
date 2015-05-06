@@ -141,6 +141,7 @@ public final class Bitmap_Delegate {
      * Creates and returns a {@link Bitmap} initialized with the given stream content.
      *
      * @param input the stream from which to read the bitmap content
+     * @param createFlags
      * @param density the density associated with the bitmap
      *
      * @see Bitmap#isPremultiplied()
@@ -165,7 +166,8 @@ public final class Bitmap_Delegate {
      * @see Bitmap#isMutable()
      * @see Bitmap#getDensity()
      */
-    public static Bitmap createBitmap(BufferedImage image, boolean isMutable, Density density) {
+    public static Bitmap createBitmap(BufferedImage image, boolean isMutable,
+            Density density) throws IOException {
         return createBitmap(image, getPremultipliedBitmapCreateFlags(isMutable), density);
     }
 
@@ -173,6 +175,7 @@ public final class Bitmap_Delegate {
      * Creates and returns a {@link Bitmap} initialized with the given {@link BufferedImage}
      *
      * @param image the bitmap content
+     * @param createFlags
      * @param density the density associated with the bitmap
      *
      * @see Bitmap#isPremultiplied()
@@ -180,7 +183,7 @@ public final class Bitmap_Delegate {
      * @see Bitmap#getDensity()
      */
     public static Bitmap createBitmap(BufferedImage image, Set<BitmapCreateFlags> createFlags,
-            Density density) {
+            Density density) throws IOException {
         // create a delegate with the given image.
         Bitmap_Delegate delegate = new Bitmap_Delegate(image, Config.ARGB_8888);
 

@@ -1,7 +1,4 @@
-page.title=Designing for Android TV
-page.tags="tv", "leanback","designguidelines"
-page.metaDescription=Guidelines to help you create a great leanback experience on Android TV.
-page.image=design/tv/images/apps-games-rows.jpg
+page.title=Android TV
 @jd:body
 
 
@@ -9,14 +6,11 @@ page.image=design/tv/images/apps-games-rows.jpg
   experience. It's important to understand how your app is presented in the main user interface and
   how your app can help users get to the content they want quickly.</p>
 
-<p class="caution">
+<p class="note">
   <strong>Important:</strong> There are specific design requirements your app must meet to qualify
   as an Android TV app on Google Play. For more information, see the requirements listed in
   <a href="{@docRoot}distribute/essentials/quality/tv.html">TV App Quality</a>.
 </p>
-
-<p class="note"><strong>Note:</strong> For information about how to publish your TV apps in Google Play,
-see <a href="/distribute/googleplay/tv.html">Distributing to Android TV</a>.</p>
 
 <h2>Home Screen</h2>
 
@@ -38,7 +32,7 @@ see <a href="/distribute/googleplay/tv.html">Distributing to Android TV</a>.</p>
 <p>To learn more about searching within your app, see
   <a href="{@docRoot}training/tv/discovery/in-app-search.html">Searching within TV Apps</a>.
 
-<h2 id="recommendations">Recommendations</h2>
+<h2>Recommendations</h2>
 
 <p>The recommendations row on Android TV is a central feature of the Home Screen that allows
   users quick access to dynamic and relevant content for their media-consumption activities. The

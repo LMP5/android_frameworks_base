@@ -267,12 +267,6 @@ public class CheckedTextView extends TextView implements Checkable {
             if (mHasCheckMarkTintMode) {
                 mCheckMarkDrawable.setTintMode(mCheckMarkTintMode);
             }
-
-            // The drawable (or one of its children) may not have been
-            // stateful before applying the tint, so let's try again.
-            if (mCheckMarkDrawable.isStateful()) {
-                mCheckMarkDrawable.setState(getDrawableState());
-            }
         }
     }
 
@@ -393,11 +387,7 @@ public class CheckedTextView extends TextView implements Checkable {
                 right = width - mBasePadding;
                 left = right - mCheckMarkWidth;
             }
-            if (isLayoutRtl()) {
-                checkMarkDrawable.setBounds( mScrollX + left, top, mScrollX + right, bottom);
-            } else {
-                checkMarkDrawable.setBounds( left, top, right, bottom);
-            }
+            checkMarkDrawable.setBounds(mScrollX + left, top, mScrollX + right, bottom);
             checkMarkDrawable.draw(canvas);
 
             final Drawable background = getBackground();

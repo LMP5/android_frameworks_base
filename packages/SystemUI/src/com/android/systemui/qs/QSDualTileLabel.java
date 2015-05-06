@@ -100,6 +100,9 @@ public class QSDualTileLabel extends LinearLayout {
         mFirstLineCaret.setImageDrawable(d);
         if (d != null) {
             final int h = d.getIntrinsicHeight();
+            final LayoutParams lp = (LayoutParams) mSecondLine.getLayoutParams();
+            lp.topMargin = h * 4 / 5;
+            mSecondLine.setLayoutParams(lp);
             mFirstLine.setMinHeight(h);
             mFirstLine.setPadding(mHorizontalPaddingPx, 0, 0, 0);
         }

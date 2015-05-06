@@ -19,7 +19,6 @@ package com.android.server.tv;
 import static android.media.tv.TvInputManager.INPUT_STATE_CONNECTED;
 import static android.media.tv.TvInputManager.INPUT_STATE_CONNECTED_STANDBY;
 import static android.media.tv.TvInputManager.INPUT_STATE_DISCONNECTED;
-import static android.media.tv.TvInputManager.INPUT_STATE_UNKNOWN;
 
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -461,7 +460,7 @@ public final class TvInputManagerService extends SystemService {
         UserState userState = getUserStateLocked(userId);
         SessionState sessionState = userState.sessionStateMap.get(sessionToken);
         if (sessionState == null) {
-            throw new SessionNotFoundException("Session state not found for token " + sessionToken);
+            throw new IllegalArgumentException("Session state not found for token " + sessionToken);
         }
         // Only the application that requested this session or the system can access it.
         if (callingUid != Process.SYSTEM_UID && callingUid != sessionState.callingUid) {
@@ -589,22 +588,18 @@ public final class TvInputManagerService extends SystemService {
     }
 
     private void releaseSessionLocked(IBinder sessionToken, int callingUid, int userId) {
-        SessionState sessionState = null;
-        try {
-            sessionState = getSessionStateLocked(sessionToken, callingUid, userId);
-            if (sessionState.session != null) {
-                UserState userState = getUserStateLocked(userId);
-                if (sessionToken == userState.mainSessionToken) {
-                    setMainLocked(sessionToken, false, callingUid, userId);
-                }
+        SessionState sessionState = getSessionStateLocked(sessionToken, callingUid, userId);
+        if (sessionState.session != null) {
+            UserState userState = getUserStateLocked(userId);
+            if (sessionToken == userState.mainSessionToken) {
+                setMainLocked(sessionToken, false, callingUid, userId);
+            }
+            try {
                 sessionState.session.release();
+            } catch (RemoteException e) {
+                Slog.e(TAG, "session process has already died", e);
             }
-        } catch (RemoteException | SessionNotFoundException e) {
-            Slog.e(TAG, "error in releaseSession", e);
-        } finally {
-            if (sessionState != null) {
-                sessionState.session = null;
-            }
+            sessionState.session = null;
         }
         removeSessionStateLocked(sessionToken, userId);
     }
@@ -652,19 +647,19 @@ public final class TvInputManagerService extends SystemService {
     }
 
     private void setMainLocked(IBinder sessionToken, boolean isMain, int callingUid, int userId) {
+        SessionState sessionState = getSessionStateLocked(sessionToken, callingUid, userId);
+        if (sessionState.hardwareSessionToken != null) {
+            sessionState = getSessionStateLocked(sessionState.hardwareSessionToken,
+                    Process.SYSTEM_UID, userId);
+        }
+        ServiceState serviceState = getServiceStateLocked(sessionState.info.getComponent(), userId);
+        if (!serviceState.isHardware) {
+            return;
+        }
+        ITvInputSession session = getSessionLocked(sessionState);
         try {
-            SessionState sessionState = getSessionStateLocked(sessionToken, callingUid, userId);
-            if (sessionState.hardwareSessionToken != null) {
-                sessionState = getSessionStateLocked(sessionState.hardwareSessionToken,
-                        Process.SYSTEM_UID, userId);
-            }
-            ServiceState serviceState = getServiceStateLocked(sessionState.info.getComponent(), userId);
-            if (!serviceState.isHardware) {
-                return;
-            }
-            ITvInputSession session = getSessionLocked(sessionState);
             session.setMain(isMain);
-        } catch (RemoteException | SessionNotFoundException e) {
+        } catch (RemoteException e) {
             Slog.e(TAG, "error in setMain", e);
         }
     }
@@ -784,22 +779,6 @@ public final class TvInputManagerService extends SystemService {
         }
 
         @Override
-        public int getTvInputState(String inputId, int userId) {
-            final int resolvedUserId = resolveCallingUserId(Binder.getCallingPid(),
-                    Binder.getCallingUid(), userId, "getTvInputState");
-            final long identity = Binder.clearCallingIdentity();
-            try {
-                synchronized (mLock) {
-                    UserState userState = getUserStateLocked(resolvedUserId);
-                    TvInputState state = userState.inputMap.get(inputId);
-                    return state == null ? INPUT_STATE_UNKNOWN : state.state;
-                }
-            } finally {
-                Binder.restoreCallingIdentity(identity);
-            }
-        }
-
-        @Override
         public List<TvContentRatingSystemInfo> getTvContentRatingSystemList(int userId) {
             final int resolvedUserId = resolveCallingUserId(Binder.getCallingPid(),
                     Binder.getCallingUid(), userId, "getTvContentRatingSystemList");
@@ -836,6 +815,10 @@ public final class TvInputManagerService extends SystemService {
                         }, 0);
                     } catch (RemoteException e) {
                         Slog.e(TAG, "client process has already died", e);
+                    }
+                    for (TvInputState state : userState.inputMap.values()) {
+                        notifyInputStateChangedLocked(userState, state.info.getId(), state.state,
+                                callback);
                     }
                 }
             } finally {
@@ -1089,7 +1072,7 @@ public final class TvInputManagerService extends SystemService {
                             getSessionLocked(sessionState.hardwareSessionToken,
                                     Process.SYSTEM_UID, resolvedUserId).setSurface(surface);
                         }
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in setSurface", e);
                     }
                 }
@@ -1120,7 +1103,7 @@ public final class TvInputManagerService extends SystemService {
                             getSessionLocked(sessionState.hardwareSessionToken, Process.SYSTEM_UID,
                                     resolvedUserId).dispatchSurfaceChanged(format, width, height);
                         }
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in dispatchSurfaceChanged", e);
                     }
                 }
@@ -1150,7 +1133,7 @@ public final class TvInputManagerService extends SystemService {
                                     Process.SYSTEM_UID, resolvedUserId).setVolume((volume > 0.0f)
                                             ? REMOTE_VOLUME_ON : REMOTE_VOLUME_OFF);
                         }
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in setVolume", e);
                     }
                 }
@@ -1187,7 +1170,7 @@ public final class TvInputManagerService extends SystemService {
                         args.arg5 = sessionToken;
                         mWatchLogHandler.obtainMessage(WatchLogHandler.MSG_LOG_WATCH_START, args)
                                 .sendToTarget();
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in tune", e);
                         return;
                     }
@@ -1209,7 +1192,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .requestUnblockContent(unblockedRating);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in requestUnblockContent", e);
                     }
                 }
@@ -1229,7 +1212,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .setCaptionEnabled(enabled);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in setCaptionEnabled", e);
                     }
                 }
@@ -1249,7 +1232,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId).selectTrack(
                                 type, trackId);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in selectTrack", e);
                     }
                 }
@@ -1270,7 +1253,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .appPrivateCommand(command, data);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in appPrivateCommand", e);
                     }
                 }
@@ -1291,7 +1274,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .createOverlayView(windowToken, frame);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in createOverlayView", e);
                     }
                 }
@@ -1311,7 +1294,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .relayoutOverlayView(frame);
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in relayoutOverlayView", e);
                     }
                 }
@@ -1331,7 +1314,7 @@ public final class TvInputManagerService extends SystemService {
                     try {
                         getSessionLocked(sessionToken, callingUid, resolvedUserId)
                                 .removeOverlayView();
-                    } catch (RemoteException | SessionNotFoundException e) {
+                    } catch (RemoteException e) {
                         Slog.e(TAG, "error in removeOverlayView", e);
                     }
                 }
@@ -2342,15 +2325,6 @@ public final class TvInputManagerService extends SystemService {
                     setStateLocked(inputId, state.intValue(), mCurrentUserId);
                 }
             }
-        }
-    }
-
-    private static class SessionNotFoundException extends IllegalArgumentException {
-        public SessionNotFoundException() {
-        }
-
-        public SessionNotFoundException(String name) {
-            super(name);
         }
     }
 }

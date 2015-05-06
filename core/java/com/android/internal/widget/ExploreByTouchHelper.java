@@ -19,7 +19,6 @@ package com.android.internal.widget;
 import android.content.Context;
 import android.graphics.Rect;
 import android.os.Bundle;
-import android.util.IntArray;
 import android.view.accessibility.*;
 import android.view.MotionEvent;
 import android.view.View;
@@ -27,8 +26,10 @@ import android.view.ViewParent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction;
 import android.view.accessibility.AccessibilityNodeProvider;
+
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * ExploreByTouchHelper is a utility class for implementing accessibility
@@ -53,29 +54,20 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
     /** Default class name used for virtual views. */
     private static final String DEFAULT_CLASS_NAME = View.class.getName();
 
-    /** Default bounds used to determine if the client didn't set any. */
-    private static final Rect INVALID_PARENT_BOUNDS = new Rect(
-            Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE);
+    // Temporary, reusable data structures.
+    private final Rect mTempScreenRect = new Rect();
+    private final Rect mTempParentRect = new Rect();
+    private final Rect mTempVisibleRect = new Rect();
+    private final int[] mTempGlobalRect = new int[2];
 
-    // Lazily-created temporary data structures used when creating nodes.
-    private Rect mTempScreenRect;
-    private Rect mTempParentRect;
-    private int[] mTempGlobalRect;
-
-    /** Lazily-created temporary data structure used to compute visibility. */
-    private Rect mTempVisibleRect;
-
-    /** Lazily-created temporary data structure used to obtain child IDs. */
-    private IntArray mTempArray;
+    /** View's context **/
+    private Context mContext;
 
     /** System accessibility manager, used to check state and send events. */
     private final AccessibilityManager mManager;
 
     /** View whose internal structure is exposed through this helper. */
     private final View mView;
-
-    /** Context of the host view. **/
-    private final Context mContext;
 
     /** Node provider that handles creating nodes and performing actions. */
     private ExploreByTouchNodeProvider mNodeProvider;
@@ -336,17 +328,11 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
         onInitializeAccessibilityNodeInfo(mView, node);
 
         // Add the virtual descendants.
-        if (mTempArray == null) {
-            mTempArray = new IntArray();
-        } else {
-            mTempArray.clear();
-        }
-        final IntArray virtualViewIds = mTempArray;
+        final LinkedList<Integer> virtualViewIds = new LinkedList<Integer>();
         getVisibleVirtualViews(virtualViewIds);
 
-        final int N = virtualViewIds.size();
-        for (int i = 0; i < N; i++) {
-            node.addChild(mView, virtualViewIds.get(i));
+        for (Integer childVirtualViewId : virtualViewIds) {
+            node.addChild(mView, childVirtualViewId);
         }
 
         return node;
@@ -381,17 +367,11 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
      * @return An {@link AccessibilityNodeInfo} for the specified item.
      */
     private AccessibilityNodeInfo createNodeForChild(int virtualViewId) {
-        ensureTempRects();
-        final Rect tempParentRect = mTempParentRect;
-        final int[] tempGlobalRect = mTempGlobalRect;
-        final Rect tempScreenRect = mTempScreenRect;
-
         final AccessibilityNodeInfo node = AccessibilityNodeInfo.obtain();
 
         // Ensure the client has good defaults.
         node.setEnabled(true);
         node.setClassName(DEFAULT_CLASS_NAME);
-        node.setBoundsInParent(INVALID_PARENT_BOUNDS);
 
         // Allow the client to populate the node.
         onPopulateNodeForVirtualView(virtualViewId, node);
@@ -402,8 +382,8 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
                     + "populateNodeForVirtualViewId()");
         }
 
-        node.getBoundsInParent(tempParentRect);
-        if (tempParentRect.equals(INVALID_PARENT_BOUNDS)) {
+        node.getBoundsInParent(mTempParentRect);
+        if (mTempParentRect.isEmpty()) {
             throw new RuntimeException("Callbacks must set parent bounds in "
                     + "populateNodeForVirtualViewId()");
         }
@@ -426,33 +406,27 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
         // Manage internal accessibility focus state.
         if (mFocusedVirtualViewId == virtualViewId) {
             node.setAccessibilityFocused(true);
-            node.addAction(AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS);
+            node.addAction(AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS);
         } else {
             node.setAccessibilityFocused(false);
-            node.addAction(AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS);
+            node.addAction(AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS);
         }
 
         // Set the visibility based on the parent bound.
-        if (intersectVisibleToUser(tempParentRect)) {
+        if (intersectVisibleToUser(mTempParentRect)) {
             node.setVisibleToUser(true);
-            node.setBoundsInParent(tempParentRect);
+            node.setBoundsInParent(mTempParentRect);
         }
 
         // Calculate screen-relative bound.
-        mView.getLocationOnScreen(tempGlobalRect);
-        final int offsetX = tempGlobalRect[0];
-        final int offsetY = tempGlobalRect[1];
-        tempScreenRect.set(tempParentRect);
-        tempScreenRect.offset(offsetX, offsetY);
-        node.setBoundsInScreen(tempScreenRect);
+        mView.getLocationOnScreen(mTempGlobalRect);
+        final int offsetX = mTempGlobalRect[0];
+        final int offsetY = mTempGlobalRect[1];
+        mTempScreenRect.set(mTempParentRect);
+        mTempScreenRect.offset(offsetX, offsetY);
+        node.setBoundsInScreen(mTempScreenRect);
 
         return node;
-    }
-
-    private void ensureTempRects() {
-        mTempGlobalRect = new int[2];
-        mTempParentRect = new Rect();
-        mTempScreenRect = new Rect();
     }
 
     private boolean performAction(int virtualViewId, int action, Bundle arguments) {
@@ -472,13 +446,13 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
         switch (action) {
             case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
             case AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS:
-                return manageFocusForChild(virtualViewId, action);
+                return manageFocusForChild(virtualViewId, action, arguments);
             default:
                 return onPerformActionForVirtualView(virtualViewId, action, arguments);
         }
     }
 
-    private boolean manageFocusForChild(int virtualViewId, int action) {
+    private boolean manageFocusForChild(int virtualViewId, int action, Bundle arguments) {
         switch (action) {
             case AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS:
                 return requestAccessibilityFocus(virtualViewId);
@@ -524,16 +498,12 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
         }
 
         // If no portion of the parent is visible, this view is not visible.
-        if (mTempVisibleRect == null) {
-            mTempVisibleRect = new Rect();
-        }
-        final Rect tempVisibleRect = mTempVisibleRect;
-        if (!mView.getLocalVisibleRect(tempVisibleRect)) {
+        if (!mView.getLocalVisibleRect(mTempVisibleRect)) {
             return false;
         }
 
         // Check if the view intersects the visible portion of the parent.
-        return localRect.intersect(tempVisibleRect);
+        return localRect.intersect(mTempVisibleRect);
     }
 
     /**
@@ -613,7 +583,7 @@ public abstract class ExploreByTouchHelper extends View.AccessibilityDelegate {
      *
      * @param virtualViewIds The list to populate with visible items
      */
-    protected abstract void getVisibleVirtualViews(IntArray virtualViewIds);
+    protected abstract void getVisibleVirtualViews(List<Integer> virtualViewIds);
 
     /**
      * Populates an {@link AccessibilityEvent} with information about the

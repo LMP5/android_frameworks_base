@@ -255,10 +255,7 @@ public final class ArrayMap<K, V> implements Map<K, V> {
     }
 
     private ArrayMap(boolean immutable) {
-        // If this is immutable, use the sentinal EMPTY_IMMUTABLE_INTS
-        // instance instead of the usual EmptyArray.INT. The reference
-        // is checked later to see if the array is allowed to grow.
-        mHashes = immutable ? EMPTY_IMMUTABLE_INTS : EmptyArray.INT;
+        mHashes = EmptyArray.INT;
         mArray = EmptyArray.OBJECT;
         mSize = 0;
     }

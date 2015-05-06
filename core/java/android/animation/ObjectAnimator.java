@@ -885,8 +885,7 @@ public final class ObjectAnimator extends ValueAnimator {
     }
 
     /**
-     * Sets the target object whose property will be animated by this animation. If the
-     * animator has been started, it will be canceled.
+     * Sets the target object whose property will be animated by this animation
      *
      * @param target The object being animated
      */
@@ -894,9 +893,6 @@ public final class ObjectAnimator extends ValueAnimator {
     public void setTarget(@Nullable Object target) {
         final Object oldTarget = getTarget();
         if (oldTarget != target) {
-            if (isStarted()) {
-                cancel();
-            }
             mTarget = target == null ? null : new WeakReference<Object>(target);
             // New target should cause re-initialization prior to starting
             mInitialized = false;

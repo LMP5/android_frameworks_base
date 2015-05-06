@@ -76,7 +76,7 @@ public class ShapeDrawable extends Drawable {
      * ShapeDrawable constructor.
      */
     public ShapeDrawable() {
-        this(new ShapeState(null), null);
+        this(new ShapeState(null), null, null);
     }
 
     /**
@@ -85,7 +85,7 @@ public class ShapeDrawable extends Drawable {
      * @param s the Shape that this ShapeDrawable should be
      */
     public ShapeDrawable(Shape s) {
-        this(new ShapeState(null), null);
+        this(new ShapeState(null), null, null);
 
         mShapeState.mShape = s;
     }
@@ -508,14 +508,6 @@ public class ShapeDrawable extends Drawable {
     }
 
     /**
-     * @hide
-     */
-    public void clearMutated() {
-        super.clearMutated();
-        mMutated = false;
-    }
-
-    /**
      * Defines the intrinsic properties of this ShapeDrawable's Shape.
      */
     final static class ShapeState extends ConstantState {
@@ -555,12 +547,17 @@ public class ShapeDrawable extends Drawable {
 
         @Override
         public Drawable newDrawable() {
-            return new ShapeDrawable(this, null);
+            return new ShapeDrawable(this, null, null);
         }
 
         @Override
         public Drawable newDrawable(Resources res) {
-            return new ShapeDrawable(this, res);
+            return new ShapeDrawable(this, res, null);
+        }
+
+        @Override
+        public Drawable newDrawable(Resources res, Theme theme) {
+            return new ShapeDrawable(this, res, theme);
         }
 
         @Override
@@ -573,8 +570,13 @@ public class ShapeDrawable extends Drawable {
      * The one constructor to rule them all. This is called by all public
      * constructors to set the state and initialize local properties.
      */
-    private ShapeDrawable(ShapeState state, Resources res) {
-        mShapeState = state;
+    private ShapeDrawable(ShapeState state, Resources res, Theme theme) {
+        if (theme != null && state.canApplyTheme()) {
+            mShapeState = new ShapeState(state);
+            applyTheme(theme);
+        } else {
+            mShapeState = state;
+        }
 
         initializeWithState(state, res);
     }

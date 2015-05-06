@@ -17,25 +17,20 @@
 package android.media.audiopolicy;
 
 import android.annotation.IntDef;
-import android.annotation.SystemApi;
 import android.media.AudioFormat;
 import android.media.AudioSystem;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.Objects;
 
 /**
- * @hide
+ * @hide CANDIDATE FOR PUBLIC API
  */
-@SystemApi
 public class AudioMix {
 
     private AudioMixingRule mRule;
     private AudioFormat mFormat;
     private int mRouteFlags;
-    private String mRegistrationId;
-    private int mMixType = MIX_TYPE_INVALID;
 
     /**
      * All parameters are guaranteed valid through the Builder.
@@ -44,39 +39,19 @@ public class AudioMix {
         mRule = rule;
         mFormat = format;
         mRouteFlags = routeFlags;
-        mRegistrationId = null;
-        mMixType = rule.getTargetMixType();
     }
 
     /**
      * An audio mix behavior where the output of the mix is sent to the original destination of
      * the audio signal, i.e. an output device for an output mix, or a recording for an input mix.
      */
-    @SystemApi
     public static final int ROUTE_FLAG_RENDER    = 0x1;
     /**
      * An audio mix behavior where the output of the mix is rerouted back to the framework and
-     * is accessible for injection or capture through the {@link AudioTrack} and {@link AudioRecord}
+     * is accessible for injection or capture through the {@link Audiotrack} and {@link AudioRecord}
      * APIs.
      */
-    @SystemApi
     public static final int ROUTE_FLAG_LOOP_BACK = 0x1 << 1;
-
-    /**
-     * @hide
-     * Invalid mix type, default value.
-     */
-    public static final int MIX_TYPE_INVALID = -1;
-    /**
-     * @hide
-     * Mix type indicating playback streams are mixed.
-     */
-    public static final int MIX_TYPE_PLAYERS = 0;
-    /**
-     * @hide
-     * Mix type indicating recording streams are mixed.
-     */
-    public static final int MIX_TYPE_RECORDERS = 1;
 
     int getRouteFlags() {
         return mRouteFlags;
@@ -91,26 +66,6 @@ public class AudioMix {
     }
 
     /** @hide */
-    public int getMixType() {
-        return mMixType;
-    }
-
-    void setRegistration(String regId) {
-        mRegistrationId = regId;
-    }
-
-    /** @hide */
-    public String getRegistration() {
-        return mRegistrationId;
-    }
-
-    /** @hide */
-    @Override
-    public int hashCode() {
-        return Objects.hash(mRouteFlags, mRule, mMixType, mFormat);
-    }
-
-    /** @hide */
     @IntDef(flag = true,
             value = { ROUTE_FLAG_RENDER, ROUTE_FLAG_LOOP_BACK } )
     @Retention(RetentionPolicy.SOURCE)
@@ -120,7 +75,6 @@ public class AudioMix {
      * Builder class for {@link AudioMix} objects
      *
      */
-    @SystemApi
     public static class Builder {
         private AudioMixingRule mRule = null;
         private AudioFormat mFormat = null;
@@ -137,7 +91,6 @@ public class AudioMix {
          * @param rule a non-null {@link AudioMixingRule} instance.
          * @throws IllegalArgumentException
          */
-        @SystemApi
         public Builder(AudioMixingRule rule)
                 throws IllegalArgumentException {
             if (rule == null) {
@@ -168,7 +121,6 @@ public class AudioMix {
          * @return the same Builder instance.
          * @throws IllegalArgumentException
          */
-        @SystemApi
         public Builder setFormat(AudioFormat format)
                 throws IllegalArgumentException {
             if (format == null) {
@@ -185,7 +137,6 @@ public class AudioMix {
          * @return the same Builder instance.
          * @throws IllegalArgumentException
          */
-        @SystemApi
         public Builder setRouteFlags(@RouteFlags int routeFlags)
                 throws IllegalArgumentException {
             if (routeFlags == 0) {
@@ -204,7 +155,6 @@ public class AudioMix {
          * @return a new {@link AudioMix} object
          * @throws IllegalArgumentException if no {@link AudioMixingRule} has been set.
          */
-        @SystemApi
         public AudioMix build() throws IllegalArgumentException {
             if (mRule == null) {
                 throw new IllegalArgumentException("Illegal null AudioMixingRule");

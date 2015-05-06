@@ -1,8 +1,4 @@
 page.title=Adding Wearable Features to Notifications
-page.tags=notifications, wear
-page.image=wear/images/01_notifications.png
-helpoutsWidget=true
-
 @jd:body
 
 <div id="tb-wrapper">
@@ -51,3 +47,5 @@ swipes to the left.</dd>
       <dd>Learn how to place all similar notifications from your app in a stack, allowing users to view
       each notification individually without adding multiple cards to the card stream.</dd>
   </dl>
+
+</div>

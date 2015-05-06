@@ -140,7 +140,7 @@ public class LockdownVpnTracker {
         if (egressDisconnected || egressChanged) {
             clearSourceRulesLocked();
             mAcceptedEgressIface = null;
-            mVpn.stopLegacyVpnPrivileged();
+            mVpn.stopLegacyVpn();
         }
         if (egressDisconnected) {
             hideNotification();
@@ -163,9 +163,7 @@ public class LockdownVpnTracker {
 
                 mAcceptedEgressIface = egressProp.getInterfaceName();
                 try {
-                    // Use the privileged method because Lockdown VPN is initiated by the system, so
-                    // no additional permission checks are necessary.
-                    mVpn.startLegacyVpnPrivileged(mProfile, KeyStore.getInstance(), egressProp);
+                    mVpn.startLegacyVpn(mProfile, KeyStore.getInstance(), egressProp);
                 } catch (IllegalStateException e) {
                     mAcceptedEgressIface = null;
                     Slog.e(TAG, "Failed to start VPN", e);
@@ -252,7 +250,7 @@ public class LockdownVpnTracker {
         mAcceptedEgressIface = null;
         mErrorCount = 0;
 
-        mVpn.stopLegacyVpnPrivileged();
+        mVpn.stopLegacyVpn();
         try {
             mNetService.setFirewallEgressDestRule(mProfile.server, 500, false);
             mNetService.setFirewallEgressDestRule(mProfile.server, 4500, false);

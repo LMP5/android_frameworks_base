@@ -207,12 +207,7 @@ public class UsbDebuggingManager implements Runnable {
 
                 case MESSAGE_ADB_CONFIRM: {
                     String key = (String)msg.obj;
-                    String fingerprints = getFingerprints(key);
-                    if ("".equals(fingerprints)) {
-                        sendResponse("NO");
-                        break;
-                    }
-                    mFingerprints = fingerprints;
+                    mFingerprints = getFingerprints(key);
                     startConfirmation(key, mFingerprints);
                     break;
                 }
@@ -229,25 +224,16 @@ public class UsbDebuggingManager implements Runnable {
         StringBuilder sb = new StringBuilder();
         MessageDigest digester;
 
-        if (key == null) {
-            return "";
-        }
-
         try {
             digester = MessageDigest.getInstance("MD5");
         } catch (Exception ex) {
-            Slog.e(TAG, "Error getting digester", ex);
+            Slog.e(TAG, "Error getting digester: " + ex);
             return "";
         }
 
         byte[] base64_data = key.split("\\s+")[0].getBytes();
-        byte[] digest;
-        try {
-            digest = digester.digest(Base64.decode(base64_data, Base64.DEFAULT));
-        } catch (IllegalArgumentException e) {
-            Slog.e(TAG, "error doing base64 decoding", e);
-            return "";
-        }
+        byte[] digest = digester.digest(Base64.decode(base64_data, Base64.DEFAULT));
+
         for (int i = 0; i < digest.length; i++) {
             sb.append(hex.charAt((digest[i] >> 4) & 0xf));
             sb.append(hex.charAt(digest[i] & 0xf));

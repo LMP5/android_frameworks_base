@@ -16,11 +16,9 @@
 
 package com.android.systemui.volume;
 
-import com.android.systemui.DemoMode;
 import com.android.systemui.statusbar.policy.ZenModeController;
 
-public interface VolumeComponent extends DemoMode {
+public interface VolumeComponent {
     ZenModeController getZenController();
     void setVolumePanel(VolumePanel panel);
-    void dismissNow();
 }

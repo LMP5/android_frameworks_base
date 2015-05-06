@@ -21,12 +21,6 @@
 #include "Caches.h"
 
 namespace android {
-
-#ifdef USE_OPENGL_RENDERER
-using namespace uirenderer;
-ANDROID_SINGLETON_STATIC_INSTANCE(ResourceCache);
-#endif
-
 namespace uirenderer {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -68,6 +62,8 @@ void ResourceCache::incrementRefcount(void* resource, ResourceType resourceType)
 }
 
 void ResourceCache::incrementRefcount(const SkBitmap* bitmapResource) {
+    bitmapResource->pixelRef()->globalRef();
+    SkSafeRef(bitmapResource->getColorTable());
     incrementRefcount((void*) bitmapResource, kBitmap);
 }
 
@@ -77,6 +73,10 @@ void ResourceCache::incrementRefcount(const SkPath* pathResource) {
 
 void ResourceCache::incrementRefcount(const Res_png_9patch* patchResource) {
     incrementRefcount((void*) patchResource, kNinePatch);
+}
+
+void ResourceCache::incrementRefcount(Layer* layerResource) {
+    incrementRefcount((void*) layerResource, kLayer);
 }
 
 void ResourceCache::incrementRefcountLocked(void* resource, ResourceType resourceType) {
@@ -90,6 +90,8 @@ void ResourceCache::incrementRefcountLocked(void* resource, ResourceType resourc
 }
 
 void ResourceCache::incrementRefcountLocked(const SkBitmap* bitmapResource) {
+    bitmapResource->pixelRef()->globalRef();
+    SkSafeRef(bitmapResource->getColorTable());
     incrementRefcountLocked((void*) bitmapResource, kBitmap);
 }
 
@@ -101,12 +103,18 @@ void ResourceCache::incrementRefcountLocked(const Res_png_9patch* patchResource)
     incrementRefcountLocked((void*) patchResource, kNinePatch);
 }
 
+void ResourceCache::incrementRefcountLocked(Layer* layerResource) {
+    incrementRefcountLocked((void*) layerResource, kLayer);
+}
+
 void ResourceCache::decrementRefcount(void* resource) {
     Mutex::Autolock _l(mLock);
     decrementRefcountLocked(resource);
 }
 
 void ResourceCache::decrementRefcount(const SkBitmap* bitmapResource) {
+    bitmapResource->pixelRef()->globalUnref();
+    SkSafeUnref(bitmapResource->getColorTable());
     decrementRefcount((void*) bitmapResource);
 }
 
@@ -116,6 +124,10 @@ void ResourceCache::decrementRefcount(const SkPath* pathResource) {
 
 void ResourceCache::decrementRefcount(const Res_png_9patch* patchResource) {
     decrementRefcount((void*) patchResource);
+}
+
+void ResourceCache::decrementRefcount(Layer* layerResource) {
+    decrementRefcount((void*) layerResource);
 }
 
 void ResourceCache::decrementRefcountLocked(void* resource) {
@@ -132,6 +144,8 @@ void ResourceCache::decrementRefcountLocked(void* resource) {
 }
 
 void ResourceCache::decrementRefcountLocked(const SkBitmap* bitmapResource) {
+    bitmapResource->pixelRef()->globalUnref();
+    SkSafeUnref(bitmapResource->getColorTable());
     decrementRefcountLocked((void*) bitmapResource);
 }
 
@@ -141,6 +155,10 @@ void ResourceCache::decrementRefcountLocked(const SkPath* pathResource) {
 
 void ResourceCache::decrementRefcountLocked(const Res_png_9patch* patchResource) {
     decrementRefcountLocked((void*) patchResource);
+}
+
+void ResourceCache::decrementRefcountLocked(Layer* layerResource) {
+    decrementRefcountLocked((void*) layerResource);
 }
 
 void ResourceCache::destructor(SkPath* resource) {
@@ -177,9 +195,10 @@ void ResourceCache::destructorLocked(const SkBitmap* resource) {
     if (ref == NULL) {
         // If we're not tracking this resource, just delete it
         if (Caches::hasInstance()) {
-            Caches::getInstance().textureCache.releaseTexture(resource);
+            Caches::getInstance().textureCache.removeDeferred(resource);
+        } else {
+            delete resource;
         }
-        delete resource;
         return;
     }
     ref->destroyed = true;
@@ -229,9 +248,6 @@ bool ResourceCache::recycle(SkBitmap* resource) {
 bool ResourceCache::recycleLocked(SkBitmap* resource) {
     ssize_t index = mCache->indexOfKey(resource);
     if (index < 0) {
-        if (Caches::hasInstance()) {
-            Caches::getInstance().textureCache.releaseTexture(resource);
-        }
         // not tracking this resource; just recycle the pixel data
         resource->setPixels(NULL, NULL);
         return true;
@@ -255,21 +271,15 @@ bool ResourceCache::recycleLocked(SkBitmap* resource) {
  * by the various destructor() and recycle() methods which call this method).
  */
 void ResourceCache::deleteResourceReferenceLocked(const void* resource, ResourceReference* ref) {
-    if (ref->recycled && ref->resourceType == kBitmap) {
-        SkBitmap* bitmap = (SkBitmap*) resource;
-        if (Caches::hasInstance()) {
-            Caches::getInstance().textureCache.releaseTexture(bitmap);
-        }
-        bitmap->setPixels(NULL, NULL);
-    }
-    if (ref->destroyed) {
+    if (ref->destroyed || ref->resourceType == kLayer) {
         switch (ref->resourceType) {
             case kBitmap: {
                 SkBitmap* bitmap = (SkBitmap*) resource;
                 if (Caches::hasInstance()) {
-                    Caches::getInstance().textureCache.releaseTexture(bitmap);
+                    Caches::getInstance().textureCache.removeDeferred(bitmap);
+                } else {
+                    delete bitmap;
                 }
-                delete bitmap;
             }
             break;
             case kPath: {
@@ -290,6 +300,11 @@ void ResourceCache::deleteResourceReferenceLocked(const void* resource, Resource
                     int8_t* patch = (int8_t*) resource;
                     delete[] patch;
                 }
+            }
+            break;
+            case kLayer: {
+                Layer* layer = (Layer*) resource;
+                Caches::getInstance().deleteLayerDeferred(layer);
             }
             break;
         }

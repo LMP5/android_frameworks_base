@@ -604,8 +604,7 @@ private:
                                   const String8& srcDir,
                                   const AaptGroupEntry& kind,
                                   const String8& resType,
-                                  sp<FilePathStore>& fullResPaths,
-                                  const bool overwrite=false);
+                                  sp<FilePathStore>& fullResPaths);
 
     ssize_t slurpResourceTree(Bundle* bundle, const String8& srcDir);
 

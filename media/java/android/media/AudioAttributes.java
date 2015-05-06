@@ -161,12 +161,6 @@ public final class AudioAttributes implements Parcelable {
      * Usage value to use when the usage is for game audio.
      */
     public final static int USAGE_GAME = 14;
-    /**
-     * @hide
-     * Usage value to use when feeding audio to the platform and replacing "traditional" audio
-     * source, such as audio capture devices.
-     */
-    public final static int USAGE_VIRTUAL_SOURCE = 15;
 
     /**
      * Flag defining a behavior where the audibility of the sound will be ensured by the system.
@@ -241,11 +235,11 @@ public final class AudioAttributes implements Parcelable {
 
     /**
      * @hide
+     * CANDIDATE FOR PUBLIC API
      * Return the capture preset.
      * @return one of the values that can be set in {@link Builder#setCapturePreset(int)} or a
      *    negative value if none has been set.
      */
-    @SystemApi
     public int getCapturePreset() {
         return mSource;
     }
@@ -380,7 +374,6 @@ public final class AudioAttributes implements Parcelable {
                 case USAGE_ASSISTANCE_NAVIGATION_GUIDANCE:
                 case USAGE_ASSISTANCE_SONIFICATION:
                 case USAGE_GAME:
-                case USAGE_VIRTUAL_SOURCE:
                      mUsage = usage;
                      break;
                 default:
@@ -508,7 +501,6 @@ public final class AudioAttributes implements Parcelable {
          *     {@link MediaRecorder.AudioSource#VOICE_COMMUNICATION}.
          * @return the same Builder instance.
          */
-        @SystemApi
         public Builder setCapturePreset(int preset) {
             switch (preset) {
                 case MediaRecorder.AudioSource.DEFAULT:
@@ -526,15 +518,14 @@ public final class AudioAttributes implements Parcelable {
 
         /**
          * @hide
-         * Same as {@link #setCapturePreset(int)} but authorizes the use of HOTWORD,
-         * REMOTE_SUBMIX and FM_TUNER.
+         * Same as {@link #setCapturePreset(int)} but authorizes the use of HOTWORD and
+         * REMOTE_SUBMIX.
          * @param preset
          * @return the same Builder instance.
          */
         public Builder setInternalCapturePreset(int preset) {
             if ((preset == MediaRecorder.AudioSource.HOTWORD)
-                    || (preset == MediaRecorder.AudioSource.REMOTE_SUBMIX)
-                    || (preset == MediaRecorder.AudioSource.FM_TUNER)) {
+                    || (preset == MediaRecorder.AudioSource.REMOTE_SUBMIX)) {
                 mSource = preset;
             } else {
                 setCapturePreset(preset);

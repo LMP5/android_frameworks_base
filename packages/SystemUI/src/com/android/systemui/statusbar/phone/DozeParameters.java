@@ -22,7 +22,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.MathUtils;
 
-import com.android.systemui.doze.DozeLog;
 import com.android.systemui.R;
 
 import java.io.PrintWriter;
@@ -47,58 +46,30 @@ public class DozeParameters {
     public void dump(PrintWriter pw) {
         pw.println("  DozeParameters:");
         pw.print("    getDisplayStateSupported(): "); pw.println(getDisplayStateSupported());
-        pw.print("    getPulseDuration(notification): "); pw.println(getPulseDuration(DozeLog.PULSE_REASON_NOTIFICATION));
-        pw.print("    getPulseDuration(pickup): "); pw.println(getPulseDuration(DozeLog.PULSE_REASON_SENSOR_PICKUP));
-        pw.print("    getPulseDuration(intent): "); pw.println(getPulseDuration(DozeLog.PULSE_REASON_INTENT));
-        pw.print("    getPulseInDuration(notification): "); pw.println(getPulseInDuration(DozeLog.PULSE_REASON_NOTIFICATION));
-        pw.print("    getPulseInDuration(pickup): "); pw.println(getPulseInDuration(DozeLog.PULSE_REASON_SENSOR_PICKUP));
-        pw.print("    getPulseInDuration(intent): "); pw.println(getPulseInDuration(DozeLog.PULSE_REASON_INTENT));
-        pw.print("    getPulseInDelay(notification): "); pw.println(getPulseInDelay(DozeLog.PULSE_REASON_NOTIFICATION));
-        pw.print("    getPulseInDelay(pickup): "); pw.println(getPulseInDelay(DozeLog.PULSE_REASON_SENSOR_PICKUP));
-        pw.print("    getPulseInDelay(intent): "); pw.println(getPulseInDelay(DozeLog.PULSE_REASON_INTENT));
+        pw.print("    getPulseDuration(): "); pw.println(getPulseDuration());
+        pw.print("    getPulseInDuration(): "); pw.println(getPulseInDuration());
         pw.print("    getPulseInVisibleDuration(): "); pw.println(getPulseVisibleDuration());
         pw.print("    getPulseOutDuration(): "); pw.println(getPulseOutDuration());
         pw.print("    getPulseOnSigMotion(): "); pw.println(getPulseOnSigMotion());
         pw.print("    getVibrateOnSigMotion(): "); pw.println(getVibrateOnSigMotion());
         pw.print("    getPulseOnPickup(): "); pw.println(getPulseOnPickup());
         pw.print("    getVibrateOnPickup(): "); pw.println(getVibrateOnPickup());
-        pw.print("    getProxCheckBeforePulse(pickup): "); pw.println(getProxCheckBeforePulse(DozeLog.PULSE_REASON_SENSOR_PICKUP));
-        pw.print("    getProxCheckBeforePulse(intent): "); pw.println(getProxCheckBeforePulse(DozeLog.PULSE_REASON_INTENT));
         pw.print("    getPulseOnNotifications(): "); pw.println(getPulseOnNotifications());
         pw.print("    getPulseSchedule(): "); pw.println(getPulseSchedule());
         pw.print("    getPulseScheduleResets(): "); pw.println(getPulseScheduleResets());
         pw.print("    getPickupVibrationThreshold(): "); pw.println(getPickupVibrationThreshold());
-        pw.print("    getPickupPerformsProxCheck(): "); pw.println(getPickupPerformsProxCheck());
     }
 
     public boolean getDisplayStateSupported() {
         return getBoolean("doze.display.supported", R.bool.doze_display_state_supported);
     }
 
-    public int getPulseDuration(int reason) {
-        return getPulseInDuration(reason) + getPulseVisibleDuration() + getPulseOutDuration();
+    public int getPulseDuration() {
+        return getPulseInDuration() + getPulseVisibleDuration() + getPulseOutDuration();
     }
 
-    public int getPulseInDuration(int reason) {
-        switch(reason) {
-        case DozeLog.PULSE_REASON_SENSOR_PICKUP:
-                return getInt("doze.pulse.duration.in.pickup", R.integer.doze_pulse_duration_in_pickup);
-        case DozeLog.PULSE_REASON_INTENT:
-                return getInt("doze.pulse.duration.in.intent", R.integer.doze_pulse_duration_in_intent);
-        default:
-                return getInt("doze.pulse.duration.in", R.integer.doze_pulse_duration_in);
-        }
-    }
-
-    public int getPulseInDelay(int reason) {
-        switch(reason) {
-        case DozeLog.PULSE_REASON_SENSOR_PICKUP:
-                return getInt("doze.pulse.delay.in.pickup", R.integer.doze_pulse_delay_in_pickup);
-        case DozeLog.PULSE_REASON_INTENT:
-                return getInt("doze.pulse.delay.in.intent", R.integer.doze_pulse_delay_in_intent);
-        default:
-                return getInt("doze.pulse.delay.in", R.integer.doze_pulse_delay_in);
-        }
+    public int getPulseInDuration() {
+        return getInt("doze.pulse.duration.in", R.integer.doze_pulse_duration_in);
     }
 
     public int getPulseVisibleDuration() {
@@ -123,21 +94,6 @@ public class DozeParameters {
 
     public boolean getVibrateOnPickup() {
         return SystemProperties.getBoolean("doze.vibrate.pickup", false);
-    }
-
-    public boolean getProxCheckBeforePulse(int reason) {
-        switch(reason) {
-        case DozeLog.PULSE_REASON_SENSOR_PICKUP:
-                return getBoolean("doze.pulse.proxcheck.pickup", R.bool.doze_proximity_check_before_pulse);
-        case DozeLog.PULSE_REASON_INTENT:
-                return getBoolean("doze.pulse.proxcheck.intent", R.bool.doze_proximity_check_before_pulse_intent);
-        default:
-                return getBoolean("doze.pulse.proxcheck", R.bool.doze_proximity_check_before_pulse);
-        }
-    }
-
-    public boolean getPickupPerformsProxCheck() {
-        return getBoolean("doze.pickup.proxcheck", R.bool.doze_pickup_performs_proximity_check);
     }
 
     public boolean getPulseOnNotifications() {

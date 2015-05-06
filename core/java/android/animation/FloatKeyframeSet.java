@@ -19,7 +19,6 @@ package android.animation;
 import android.animation.Keyframe.FloatKeyframe;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This class holds a collection of FloatKeyframe objects and is called by ValueAnimator to calculate
@@ -48,8 +47,8 @@ class FloatKeyframeSet extends KeyframeSet implements Keyframes.FloatKeyframes {
 
     @Override
     public FloatKeyframeSet clone() {
-        final List<Keyframe> keyframes = mKeyframes;
-        final int numKeyframes = mKeyframes.size();
+        ArrayList<Keyframe> keyframes = mKeyframes;
+        int numKeyframes = mKeyframes.size();
         FloatKeyframe[] newKeyframes = new FloatKeyframe[numKeyframes];
         for (int i = 0; i < numKeyframes; ++i) {
             newKeyframes[i] = (FloatKeyframe) keyframes.get(i).clone();

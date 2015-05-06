@@ -136,10 +136,19 @@ public:
     virtual status_t prepareDirty(float left, float top, float right, float bottom, bool opaque);
     virtual void finish();
 
+    void setCountOverdrawEnabled(bool enabled) {
+        mCountOverdraw = enabled;
+    }
+
+    float getOverdraw() {
+        return mCountOverdraw ? mOverdraw : 0.0f;
+    }
+
     virtual status_t callDrawGLFunction(Functor* functor, Rect& dirty);
 
     void pushLayerUpdate(Layer* layer);
     void cancelLayerUpdate(Layer* layer);
+    void clearLayerUpdates();
     void flushLayerUpdates();
     void markLayersAsBuildLayers();
 
@@ -341,12 +350,6 @@ public:
     float getLightRadius() const { return mLightRadius; }
     uint8_t getAmbientShadowAlpha() const { return mAmbientShadowAlpha; }
     uint8_t getSpotShadowAlpha() const { return mSpotShadowAlpha; }
-
-    SkPath* allocPathForFrame() {
-        SkPath* path = new SkPath();
-        mTempPaths.push_back(path);
-        return path;
-    }
 
 protected:
     /**
@@ -987,7 +990,7 @@ private:
     // List of rectangles to clear after saveLayer() is invoked
     Vector<Rect*> mLayers;
     // List of layers to update at the beginning of a frame
-    Vector< sp<Layer> > mLayerUpdates;
+    Vector<Layer*> mLayerUpdates;
 
     // The following fields are used to setup drawing
     // Used to describe the shaders to generate
@@ -1012,6 +1015,11 @@ private:
     bool mSuppressTiling;
     bool mFirstFrameAfterResize;
 
+    // If true, this renderer will setup drawing to emulate
+    // an increment stencil buffer in the color buffer
+    bool mCountOverdraw;
+    float mOverdraw;
+
     bool mSkipOutlineClip;
 
     // Lighting + shadows
@@ -1019,9 +1027,6 @@ private:
     float mLightRadius;
     uint8_t mAmbientShadowAlpha;
     uint8_t mSpotShadowAlpha;
-
-    // Paths kept alive for the duration of the frame
-    std::vector<SkPath*> mTempPaths;
 
     friend class Layer;
     friend class TextSetupFunctor;

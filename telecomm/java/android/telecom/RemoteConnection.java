@@ -73,21 +73,14 @@ public final class RemoteConnection {
          */
         public void onRingbackRequested(RemoteConnection connection, boolean ringback) {}
 
-        /** @hide */
-        @Deprecated public void onCallCapabilitiesChanged(
-                RemoteConnection connection,
-                int callCapabilities) {}
-
         /**
          * Indicates that the call capabilities of this {@code RemoteConnection} have changed.
-         * See {@link #getConnectionCapabilities()}.
+         * See {@link #getCallCapabilities()}.
          *
          * @param connection The {@code RemoteConnection} invoking this method.
-         * @param connectionCapabilities The new capabilities of the {@code RemoteConnection}.
+         * @param callCapabilities The new call capabilities of the {@code RemoteConnection}.
          */
-        public void onConnectionCapabilitiesChanged(
-                RemoteConnection connection,
-                int connectionCapabilities) {}
+        public void onCallCapabilitiesChanged(RemoteConnection connection, int callCapabilities) {}
 
         /**
          * Indicates that the call properties of this {@code RemoteConnection} have changed.
@@ -95,7 +88,6 @@ public final class RemoteConnection {
          *
          * @param connection The {@code RemoteConnection} invoking this method.
          * @param callProperties The new call properties of the {@code RemoteConnection}.
-         * @hide
          */
         public void onCallPropertiesChanged(RemoteConnection connection, int callProperties) {}
 
@@ -109,15 +101,6 @@ public final class RemoteConnection {
          * @param remainingPostDialSequence The post-dial characters that remain to be sent.
          */
         public void onPostDialWait(RemoteConnection connection, String remainingPostDialSequence) {}
-
-        /**
-         * Invoked when the post-dial sequence in the outgoing {@code Connection} has processed
-         * a character.
-         *
-         * @param connection The {@code RemoteConnection} invoking this method.
-         * @param nextChar The character being processed.
-         */
-        public void onPostDialChar(RemoteConnection connection, char nextChar) {}
 
         /**
          * Indicates that the VOIP audio status of this {@code RemoteConnection} has changed.
@@ -248,7 +231,7 @@ public final class RemoteConnection {
 
             public void onPeerDimensionsChanged(VideoProvider videoProvider, int width, int height) {}
 
-            public void onCallDataUsageChanged(VideoProvider videoProvider, int dataUsage) {}
+            public void onCallDataUsageChanged(VideoProvider videoProvider, long dataUsage) {}
 
             public void onCameraCapabilitiesChanged(
                     VideoProvider videoProvider,
@@ -292,7 +275,7 @@ public final class RemoteConnection {
             }
 
             @Override
-            public void changeCallDataUsage(int dataUsage) {
+            public void changeCallDataUsage(long dataUsage) {
                 for (Listener l : mListeners) {
                     l.onCallDataUsageChanged(VideoProvider.this, dataUsage);
                 }
@@ -435,7 +418,7 @@ public final class RemoteConnection {
     private DisconnectCause mDisconnectCause;
     private boolean mRingbackRequested;
     private boolean mConnected;
-    private int mConnectionCapabilities;
+    private int mCallCapabilities;
     private int mCallProperties;
     private int mVideoState;
     private int mCallSubstate;
@@ -472,7 +455,7 @@ public final class RemoteConnection {
         mState = connection.getState();
         mDisconnectCause = connection.getDisconnectCause();
         mRingbackRequested = connection.isRingbackRequested();
-        mConnectionCapabilities = connection.getConnectionCapabilities();
+        mCallCapabilities = connection.getCapabilities();
         mVideoState = connection.getVideoState();
         mVideoProvider = new RemoteConnection.VideoProvider(connection.getVideoProvider());
         mIsVoipAudioMode = connection.getIsVoipAudioMode();
@@ -529,38 +512,31 @@ public final class RemoteConnection {
     }
 
     /**
-     * Obtains the reason why this {@code RemoteConnection} may have been disconnected.
-     *
      * @return For a {@link Connection#STATE_DISCONNECTED} {@code RemoteConnection}, the
-     *         disconnect cause expressed as a code chosen from among those declared in
-     *         {@link DisconnectCause}.
+     * disconnect cause expressed as a code chosen from among those declared in
+     * {@link DisconnectCause}.
      */
     public DisconnectCause getDisconnectCause() {
         return mDisconnectCause;
     }
 
     /**
-     * Obtains the capabilities of this {@code RemoteConnection}.
-     *
      * @return A bitmask of the capabilities of the {@code RemoteConnection}, as defined in
-     *         the {@code CAPABILITY_*} constants in class {@link Connection}.
+     *         {@link PhoneCapabilities}.
      */
-    public int getConnectionCapabilities() {
-        return mConnectionCapabilities;
+    public int getCallCapabilities() {
+        return mCallCapabilities;
     }
 
     /**
      * @return A bitmask of the properties of the {@code RemoteConnection}, as defined in
      *         {@link CallProperties}.
-     * @hide
      */
     public int getCallProperties() {
         return mCallProperties;
     }
 
     /**
-     * Determines if the audio mode of this {@code RemoteConnection} is VOIP.
-     *
      * @return {@code true} if the {@code RemoteConnection}'s current audio mode is VOIP.
      */
     public boolean isVoipAudioMode() {
@@ -568,38 +544,30 @@ public final class RemoteConnection {
     }
 
     /**
-     * Obtains status hints pertaining to this {@code RemoteConnection}.
-     *
      * @return The current {@link StatusHints} of this {@code RemoteConnection},
-     *         or {@code null} if none have been set.
+     * or {@code null} if none have been set.
      */
     public StatusHints getStatusHints() {
         return mStatusHints;
     }
 
     /**
-     * Obtains the address of this {@code RemoteConnection}.
-     *
-     * @return The address (e.g., phone number) to which the {@code RemoteConnection}
-     *         is currently connected.
+     * @return The address (e.g., phone number) to which the {@code RemoteConnection} is currently
+     * connected.
      */
     public Uri getAddress() {
         return mAddress;
     }
 
     /**
-     * Obtains the presentation requirements for the address of this {@code RemoteConnection}.
-     *
-     * @return The presentation requirements for the address. See
-     *         {@link TelecomManager} for valid values.
+     * @return The presentation requirements for the address. See {@link TelecomManager} for valid
+     * values.
      */
     public int getAddressPresentation() {
         return mAddressPresentation;
     }
 
     /**
-     * Obtains the display name for this {@code RemoteConnection}'s caller.
-     *
      * @return The display name for the caller.
      */
     public CharSequence getCallerDisplayName() {
@@ -607,20 +575,16 @@ public final class RemoteConnection {
     }
 
     /**
-     * Obtains the presentation requirements for this {@code RemoteConnection}'s
-     * caller's display name.
-     *
      * @return The presentation requirements for the caller display name. See
-     *         {@link TelecomManager} for valid values.
+     * {@link TelecomManager} for valid values.
      */
     public int getCallerDisplayNamePresentation() {
         return mCallerDisplayNamePresentation;
     }
 
     /**
-     * Obtains the video state of this {@code RemoteConnection}.
-     *
-     * @return The video state of the {@code RemoteConnection}. See {@link VideoProfile.VideoState}.
+     * @return The video state of the {@code RemoteConnection}. See
+     * {@link VideoProfile.VideoState}.
      * @hide
      */
     public int getVideoState() {
@@ -636,8 +600,6 @@ public final class RemoteConnection {
     }
 
     /**
-     * Obtains the video provider of this {@code RemoteConnection}.
-     *
      * @return The video provider associated with this {@code RemoteConnection}.
      * @hide
      */
@@ -646,10 +608,8 @@ public final class RemoteConnection {
     }
 
     /**
-     * Determines whether this {@code RemoteConnection} is requesting ringback.
-     *
      * @return Whether the {@code RemoteConnection} is requesting that the framework play a
-     *         ringback tone on its behalf.
+     * ringback tone on its behalf.
      */
     public boolean isRingbackRequested() {
         return false;
@@ -788,7 +748,7 @@ public final class RemoteConnection {
      * of time.
      *
      * If the DTMF string contains a {@link TelecomManager#DTMF_CHARACTER_WAIT} symbol, this
-     * {@code RemoteConnection} will pause playing the tones and notify callbacks via
+     * {@code RemoteConnection} will pause playing the tones and notify callbackss via
      * {@link Callback#onPostDialWait(RemoteConnection, String)}. At this point, the in-call app
      * should display to the user an indication of this state and an affordance to continue
      * the postdial sequence. When the user decides to continue the postdial sequence, the in-call
@@ -891,13 +851,13 @@ public final class RemoteConnection {
     /**
      * @hide
      */
-    void setConnectionCapabilities(int connectionCapabilities) {
-        mConnectionCapabilities = connectionCapabilities;
+    void setCallCapabilities(int callCapabilities) {
+        mCallCapabilities = callCapabilities;
         for (Callback c : mCallbacks) {
-            c.onConnectionCapabilitiesChanged(this, connectionCapabilities);
-            c.onCallCapabilitiesChanged(this, connectionCapabilities);
+            c.onCallCapabilitiesChanged(this, callCapabilities);
         }
     }
+
     /**
      * @hide
      */
@@ -934,15 +894,6 @@ public final class RemoteConnection {
     void setPostDialWait(String remainingDigits) {
         for (Callback c : mCallbacks) {
             c.onPostDialWait(this, remainingDigits);
-        }
-    }
-
-    /**
-     * @hide
-     */
-    void onPostDialChar(char nextChar) {
-        for (Callback c : mCallbacks) {
-            c.onPostDialChar(this, nextChar);
         }
     }
 

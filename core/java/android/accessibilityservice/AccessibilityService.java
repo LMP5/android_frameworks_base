@@ -16,7 +16,6 @@
 
 package android.accessibilityservice;
 
-import android.annotation.NonNull;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -26,16 +25,12 @@ import android.os.Message;
 import android.os.RemoteException;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.WindowManager;
-import android.view.WindowManagerGlobal;
-import android.view.WindowManagerImpl;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityInteractionClient;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
 import com.android.internal.os.HandlerCaller;
-import com.android.internal.os.SomeArgs;
 
 import java.util.List;
 
@@ -371,7 +366,7 @@ public abstract class AccessibilityService extends Service {
         public void onAccessibilityEvent(AccessibilityEvent event);
         public void onInterrupt();
         public void onServiceConnected();
-        public void init(int connectionId, IBinder windowToken);
+        public void onSetConnectionId(int connectionId);
         public boolean onGesture(int gestureId);
         public boolean onKeyEvent(KeyEvent event);
     }
@@ -379,10 +374,6 @@ public abstract class AccessibilityService extends Service {
     private int mConnectionId;
 
     private AccessibilityServiceInfo mInfo;
-
-    private IBinder mWindowToken;
-
-    private WindowManager mWindowManager;
 
     /**
      * Callback for {@link android.view.accessibility.AccessibilityEvent}s.
@@ -620,23 +611,6 @@ public abstract class AccessibilityService extends Service {
         }
     }
 
-    @Override
-    public Object getSystemService(@ServiceName @NonNull String name) {
-        if (getBaseContext() == null) {
-            throw new IllegalStateException(
-                    "System services not available to Activities before onCreate()");
-        }
-
-        // Guarantee that we always return the same window manager instance.
-        if (WINDOW_SERVICE.equals(name)) {
-            if (mWindowManager == null) {
-                mWindowManager = (WindowManager) getBaseContext().getSystemService(name);
-            }
-            return mWindowManager;
-        }
-        return super.getSystemService(name);
-    }
-
     /**
      * Implement to return the implementation of the internal accessibility
      * service interface.
@@ -660,14 +634,8 @@ public abstract class AccessibilityService extends Service {
             }
 
             @Override
-            public void init(int connectionId, IBinder windowToken) {
+            public void onSetConnectionId( int connectionId) {
                 mConnectionId = connectionId;
-                mWindowToken = windowToken;
-
-                // The client may have already obtained the window manager, so
-                // update the default token on whatever manager we gave them.
-                final WindowManagerImpl wm = (WindowManagerImpl) getSystemService(WINDOW_SERVICE);
-                wm.setDefaultToken(windowToken);
             }
 
             @Override
@@ -690,7 +658,7 @@ public abstract class AccessibilityService extends Service {
      */
     public static class IAccessibilityServiceClientWrapper extends IAccessibilityServiceClient.Stub
             implements HandlerCaller.Callback {
-        private static final int DO_INIT = 1;
+        private static final int DO_SET_SET_CONNECTION = 1;
         private static final int DO_ON_INTERRUPT = 2;
         private static final int DO_ON_ACCESSIBILITY_EVENT = 3;
         private static final int DO_ON_GESTURE = 4;
@@ -709,10 +677,9 @@ public abstract class AccessibilityService extends Service {
             mCaller = new HandlerCaller(context, looper, this, true /*asyncHandler*/);
         }
 
-        public void init(IAccessibilityServiceConnection connection, int connectionId,
-                IBinder windowToken) {
-            Message message = mCaller.obtainMessageIOO(DO_INIT, connectionId,
-                    connection, windowToken);
+        public void setConnection(IAccessibilityServiceConnection connection, int connectionId) {
+            Message message = mCaller.obtainMessageIO(DO_SET_SET_CONNECTION, connectionId,
+                    connection);
             mCaller.sendMessage(message);
         }
 
@@ -763,24 +730,20 @@ public abstract class AccessibilityService extends Service {
                     mCallback.onInterrupt();
                 } return;
 
-                case DO_INIT: {
+                case DO_SET_SET_CONNECTION: {
                     mConnectionId = message.arg1;
-                    SomeArgs args = (SomeArgs) message.obj;
                     IAccessibilityServiceConnection connection =
-                            (IAccessibilityServiceConnection) args.arg1;
-                    IBinder windowToken = (IBinder) args.arg2;
-                    args.recycle();
+                        (IAccessibilityServiceConnection) message.obj;
                     if (connection != null) {
                         AccessibilityInteractionClient.getInstance().addConnection(mConnectionId,
                                 connection);
-                        mCallback.init(mConnectionId, windowToken);
+                        mCallback.onSetConnectionId(mConnectionId);
                         mCallback.onServiceConnected();
                     } else {
                         AccessibilityInteractionClient.getInstance().removeConnection(
                                 mConnectionId);
-                        mConnectionId = AccessibilityInteractionClient.NO_ID;
                         AccessibilityInteractionClient.getInstance().clearCache();
-                        mCallback.init(AccessibilityInteractionClient.NO_ID, null);
+                        mCallback.onSetConnectionId(AccessibilityInteractionClient.NO_ID);
                     }
                 } return;
 

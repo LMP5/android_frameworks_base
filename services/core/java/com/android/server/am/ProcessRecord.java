@@ -16,8 +16,6 @@
 
 package com.android.server.am;
 
-import static android.app.ActivityManager.PROCESS_STATE_NONEXISTENT;
-
 import android.util.ArraySet;
 import android.util.EventLog;
 import android.util.Slog;
@@ -66,9 +64,6 @@ final class ProcessRecord {
     ProcessStats.ProcessState baseProcessTracker;
     BatteryStatsImpl.Uid.Proc curProcBatteryStats;
     int pid;                    // The process of this application; 0 if none
-    int[] gids;                 // The gids this process was launched with
-    String requiredAbi;         // The ABI this process was launched with
-    String instructionSet;      // The instruction set this process was launched with
     boolean starting;           // True if the process is being started
     long lastActivityTime;      // For managing the LRU list
     long lastPssTime;           // Last time we retrieved PSS data
@@ -85,10 +80,10 @@ final class ProcessRecord {
     int curSchedGroup;          // Currently desired scheduling class
     int setSchedGroup;          // Last set to background scheduling class
     int trimMemoryLevel;        // Last selected memory trimming level
-    int curProcState = PROCESS_STATE_NONEXISTENT; // Currently computed process state
-    int repProcState = PROCESS_STATE_NONEXISTENT; // Last reported process state
-    int setProcState = PROCESS_STATE_NONEXISTENT; // Last set process state in process tracker
-    int pssProcState = PROCESS_STATE_NONEXISTENT; // Currently requesting pss for
+    int curProcState = -1;      // Currently computed process state: ActivityManager.PROCESS_STATE_*
+    int repProcState = -1;      // Last reported process state
+    int setProcState = -1;      // Last set process state in process tracker
+    int pssProcState = -1;      // The proc state we are currently requesting pss for
     boolean serviceb;           // Process currently is on the service B list
     boolean serviceHighRam;     // We are forcing to service B list due to its RAM use
     boolean setIsForeground;    // Running foreground UI when last set?
@@ -188,17 +183,7 @@ final class ProcessRecord {
         if (uid != info.uid) {
             pw.print(" ISOLATED uid="); pw.print(uid);
         }
-        pw.print(" gids={");
-        if (gids != null) {
-            for (int gi=0; gi<gids.length; gi++) {
-                if (gi != 0) pw.print(", ");
-                pw.print(gids[gi]);
-
-            }
-        }
-        pw.println("}");
-        pw.print(prefix); pw.print("requiredAbi="); pw.print(requiredAbi);
-                pw.print(" instructionSet="); pw.println(instructionSet);
+        pw.println();
         if (info.className != null) {
             pw.print(prefix); pw.print("class="); pw.println(info.className);
         }

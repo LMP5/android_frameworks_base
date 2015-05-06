@@ -723,13 +723,10 @@ public final class MediaStore {
                             return null;
                         }
                     }
-                    filePath = c.getString(1);
-                    if (filePath != null) {
-                        if (isVideo) {
-                            bitmap = ThumbnailUtils.createVideoThumbnail(filePath, kind);
-                        } else {
-                            bitmap = ThumbnailUtils.createImageThumbnail(filePath, kind);
-                        }
+                    if (isVideo) {
+                        bitmap = ThumbnailUtils.createVideoThumbnail(filePath, kind);
+                    } else {
+                        bitmap = ThumbnailUtils.createImageThumbnail(filePath, kind);
                     }
                 }
             } catch (SQLiteException ex) {

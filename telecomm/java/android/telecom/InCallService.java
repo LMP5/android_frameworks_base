@@ -372,7 +372,7 @@ public abstract class InCallService extends Service {
              *
              * @param dataUsage The updated data usage.
              */
-            public abstract void onCallDataUsageChanged(int dataUsage);
+            public abstract void onCallDataUsageChanged(long dataUsage);
 
             /**
              * Handles a change in camera capabilities.

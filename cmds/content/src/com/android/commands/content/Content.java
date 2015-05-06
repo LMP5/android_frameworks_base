@@ -501,7 +501,7 @@ public class Content {
 
         @Override
         public void onExecute(IContentProvider provider) throws Exception {
-            final ParcelFileDescriptor fd = provider.openFile(null, mUri, "r", null, null);
+            final ParcelFileDescriptor fd = provider.openFile(null, mUri, "r", null);
             copy(new FileInputStream(fd.getFileDescriptor()), System.out);
         }
 

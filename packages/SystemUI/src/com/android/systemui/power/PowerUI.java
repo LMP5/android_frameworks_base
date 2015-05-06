@@ -143,7 +143,6 @@ public class PowerUI extends SystemUI {
             filter.addAction(Intent.ACTION_BATTERY_CHANGED);
             filter.addAction(Intent.ACTION_SCREEN_OFF);
             filter.addAction(Intent.ACTION_SCREEN_ON);
-            filter.addAction(Intent.ACTION_USER_SWITCHED);
             filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGING);
             filter.addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED);
             filter.addAction(Intent.ACTION_POWER_CONNECTED);
@@ -220,8 +219,6 @@ public class PowerUI extends SystemUI {
                 mScreenOffTime = SystemClock.elapsedRealtime();
             } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 mScreenOffTime = -1;
-            } else if (Intent.ACTION_USER_SWITCHED.equals(action)) {
-                mWarnings.userSwitched();
             } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGED.equals(action)) {
                 updateSaverMode();
             } else if (PowerManager.ACTION_POWER_SAVE_MODE_CHANGING.equals(action)) {
@@ -311,7 +308,6 @@ public class PowerUI extends SystemUI {
         void updateLowBatteryWarning();
         boolean isInvalidChargerWarningShowing();
         void dump(PrintWriter pw);
-        void userSwitched();
     }
 }
 

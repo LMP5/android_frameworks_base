@@ -23,18 +23,13 @@ import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 
-import android.widget.AdapterView;
-import android.widget.ListView;
 import com.android.systemui.R;
 import com.android.systemui.qs.QSDetailItems;
 import com.android.systemui.qs.QSDetailItems.Item;
-import com.android.systemui.qs.QSDetailItemsList;
 import com.android.systemui.qs.QSTile;
 import com.android.systemui.statusbar.policy.BluetoothController;
 import com.android.systemui.statusbar.policy.BluetoothController.PairedDevice;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 /** Quick settings tile: Bluetooth **/
@@ -79,11 +74,7 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
 
     @Override
     protected void handleSecondaryClick() {
-        if (!mState.value) {
-            mState.value = true;
-            mController.setBluetoothEnabled(true);
-        }
-        showDetail(true);
+        mHost.startSettingsActivity(BLUETOOTH_SETTINGS);
     }
 
     @Override
@@ -103,17 +94,17 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
         if (enabled) {
             state.label = null;
             if (connected) {
-                state.icon = ResourceIcon.get(R.drawable.ic_qs_bluetooth_connected);
+                state.iconId = R.drawable.ic_qs_bluetooth_connected;
                 state.contentDescription = mContext.getString(
                         R.string.accessibility_quick_settings_bluetooth_connected);
                 state.label = mController.getLastDeviceName();
             } else if (connecting) {
-                state.icon = ResourceIcon.get(R.drawable.ic_qs_bluetooth_connecting);
+                state.iconId = R.drawable.ic_qs_bluetooth_connecting;
                 state.contentDescription = mContext.getString(
                         R.string.accessibility_quick_settings_bluetooth_connecting);
                 state.label = mContext.getString(R.string.quick_settings_bluetooth_label);
             } else {
-                state.icon = ResourceIcon.get(R.drawable.ic_qs_bluetooth_on);
+                state.iconId = R.drawable.ic_qs_bluetooth_on;
                 state.contentDescription = mContext.getString(
                         R.string.accessibility_quick_settings_bluetooth_on);
             }
@@ -121,7 +112,7 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
                 state.label = mContext.getString(R.string.quick_settings_bluetooth_label);
             }
         } else {
-            state.icon = ResourceIcon.get(R.drawable.ic_qs_bluetooth_off);
+            state.iconId = R.drawable.ic_qs_bluetooth_off;
             state.label = mContext.getString(R.string.quick_settings_bluetooth_label);
             state.contentDescription = mContext.getString(
                     R.string.accessibility_quick_settings_bluetooth_off);
@@ -169,11 +160,8 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
         }
     };
 
-    private final class BluetoothDetailAdapter implements DetailAdapter,
-            QSDetailItems.Callback, AdapterView.OnItemClickListener {
-        private QSDetailItemsList mItemsList;
-        private QSDetailItemsList.QSDetailListAdapter mAdapter;
-        private List<Item> mBluetoothItems = new ArrayList<>();
+    private final class BluetoothDetailAdapter implements DetailAdapter, QSDetailItems.Callback {
+        private QSDetailItems mItems;
 
         @Override
         public int getTitle() {
@@ -198,34 +186,27 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
 
         @Override
         public View createDetailView(Context context, View convertView, ViewGroup parent) {
-            mItemsList = QSDetailItemsList.convertOrInflate(context, convertView, parent);
-            ListView listView = mItemsList.getListView();
-            listView.setDivider(null);
-            listView.setOnItemClickListener(this);
-            listView.setAdapter(mAdapter =
-                    new QSDetailItemsList.QSDetailListAdapter(context, mBluetoothItems));
-            mItemsList.setEmptyState(R.drawable.ic_qs_bluetooth_detail_empty,
+            mItems = QSDetailItems.convertOrInflate(context, convertView, parent);
+            mItems.setTagSuffix("Bluetooth");
+            mItems.setEmptyState(R.drawable.ic_qs_bluetooth_detail_empty,
                     R.string.quick_settings_bluetooth_detail_empty_text);
-
+            mItems.setCallback(this);
             updateItems();
-            return mItemsList;
+            setItemsVisible(mState.value);
+            return mItems;
         }
 
         public void setItemsVisible(boolean visible) {
-            if (mAdapter == null) return;
-            if (visible) {
-                updateItems();
-            } else {
-                mBluetoothItems.clear();
-            }
-            mAdapter.notifyDataSetChanged();
+            if (mItems == null) return;
+            mItems.setItemsVisible(visible);
         }
 
         private void updateItems() {
-            if (mAdapter == null) return;
+            if (mItems == null) return;
+            Item[] items = null;
             final Set<PairedDevice> devices = mController.getPairedDevices();
             if (devices != null) {
-                mBluetoothItems.clear();
+                items = new Item[devices.size()];
                 int i = 0;
                 for (PairedDevice device : devices) {
                     final Item item = new Item();
@@ -240,15 +221,19 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
                         item.line2 = mContext.getString(R.string.quick_settings_connecting);
                     }
                     item.tag = device;
-                    mBluetoothItems.add(item);
+                    items[i++] = item;
                 }
             }
-            mAdapter.notifyDataSetChanged();
+            mItems.setItems(items);
         }
 
         @Override
         public void onDetailItemClick(Item item) {
-            // noop
+            if (item == null || item.tag == null) return;
+            final PairedDevice device = (PairedDevice) item.tag;
+            if (device != null && device.state == PairedDevice.STATE_DISCONNECTED) {
+                mController.connect(device);
+            }
         }
 
         @Override
@@ -257,16 +242,6 @@ public class BluetoothTile extends QSTile<QSTile.BooleanState>  {
             final PairedDevice device = (PairedDevice) item.tag;
             if (device != null) {
                 mController.disconnect(device);
-            }
-        }
-
-        @Override
-        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            Item item = (Item) parent.getItemAtPosition(position);
-            if (item == null || item.tag == null) return;
-            final PairedDevice device = (PairedDevice) item.tag;
-            if (device != null && device.state == PairedDevice.STATE_DISCONNECTED) {
-                mController.connect(device);
             }
         }
     }

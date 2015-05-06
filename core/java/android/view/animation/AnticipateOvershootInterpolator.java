@@ -35,8 +35,7 @@ import static com.android.internal.R.styleable.AnticipateOvershootInterpolator;
  * the target value and finally goes back to the final value.
  */
 @HasNativeInterpolator
-public class AnticipateOvershootInterpolator extends BaseInterpolator
-        implements NativeInterpolatorFactory {
+public class AnticipateOvershootInterpolator implements Interpolator, NativeInterpolatorFactory {
     private final float mTension;
 
     public AnticipateOvershootInterpolator() {
@@ -79,7 +78,7 @@ public class AnticipateOvershootInterpolator extends BaseInterpolator
 
         mTension = a.getFloat(AnticipateOvershootInterpolator_tension, 2.0f) *
                 a.getFloat(AnticipateOvershootInterpolator_extraTension, 1.5f);
-        setChangingConfiguration(a.getChangingConfigurations());
+
         a.recycle();
     }
 

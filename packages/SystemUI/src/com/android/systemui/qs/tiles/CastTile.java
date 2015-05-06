@@ -112,8 +112,7 @@ public class CastTile extends QSTile<QSTile.BooleanState> {
         if (!state.value && connecting) {
             state.label = mContext.getString(R.string.quick_settings_connecting);
         }
-        state.icon = ResourceIcon.get(state.value ? R.drawable.ic_qs_cast_on
-                : R.drawable.ic_qs_cast_off);
+        state.iconId = state.value ? R.drawable.ic_qs_cast_on : R.drawable.ic_qs_cast_off;
         mDetailAdapter.updateItems(devices);
     }
 

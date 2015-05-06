@@ -35,7 +35,6 @@ import android.os.IBinder;
 import android.os.IInterface;
 import android.service.voice.IVoiceInteractionSession;
 import com.android.internal.app.IVoiceInteractor;
-import com.android.internal.content.ReferrerIntent;
 
 import java.io.FileDescriptor;
 import java.util.List;
@@ -60,14 +59,14 @@ public interface IApplicationThread extends IInterface {
     void scheduleSendResult(IBinder token, List<ResultInfo> results) throws RemoteException;
     void scheduleLaunchActivity(Intent intent, IBinder token, int ident,
             ActivityInfo info, Configuration curConfig, CompatibilityInfo compatInfo,
-            String referrer, IVoiceInteractor voiceInteractor, int procState, Bundle state,
+            IVoiceInteractor voiceInteractor, int procState, Bundle state,
             PersistableBundle persistentState, List<ResultInfo> pendingResults,
-            List<ReferrerIntent> pendingNewIntents, boolean notResumed, boolean isForward,
+            List<Intent> pendingNewIntents, boolean notResumed, boolean isForward,
             ProfilerInfo profilerInfo) throws RemoteException;
     void scheduleRelaunchActivity(IBinder token, List<ResultInfo> pendingResults,
-            List<ReferrerIntent> pendingNewIntents, int configChanges,
+            List<Intent> pendingNewIntents, int configChanges,
             boolean notResumed, Configuration config) throws RemoteException;
-    void scheduleNewIntent(List<ReferrerIntent> intent, IBinder token) throws RemoteException;
+    void scheduleNewIntent(List<Intent> intent, IBinder token) throws RemoteException;
     void scheduleDestroyActivity(IBinder token, boolean finished,
             int configChanges) throws RemoteException;
     void scheduleReceiver(Intent intent, ActivityInfo info, CompatibilityInfo compatInfo,

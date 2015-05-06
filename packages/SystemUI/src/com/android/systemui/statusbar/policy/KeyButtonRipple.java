@@ -105,6 +105,7 @@ public class KeyButtonRipple extends Drawable {
         }
     }
 
+
     @Override
     public void draw(Canvas canvas) {
         mSupportHardware = canvas.isHardwareAccelerated();
@@ -178,11 +179,6 @@ public class KeyButtonRipple extends Drawable {
     }
 
     @Override
-    public void jumpToCurrentState() {
-        cancelAnimations();
-    }
-
-    @Override
     public boolean isStateful() {
         return true;
     }
@@ -226,7 +222,7 @@ public class KeyButtonRipple extends Drawable {
         mRunningAnimations.add(scaleAnimator);
     }
 
-    private void exitSoftware() {
+    /* package */ void exitSoftware() {
         ObjectAnimator alphaAnimator = ObjectAnimator.ofFloat(this, "glowAlpha", mGlowAlpha, 0f);
         alphaAnimator.setInterpolator(mAlphaExitInterpolator);
         alphaAnimator.setDuration(ANIMATION_DURATION_FADE);

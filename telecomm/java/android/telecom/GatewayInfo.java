@@ -23,16 +23,12 @@ import android.os.Parcelable;
 import android.text.TextUtils;
 
 /**
- * Encapsulated gateway address information for outgoing call. When calls are made, the system
- * provides a facility to specify two addresses for the call: one to display as the address being
- * dialed and a separate (gateway) address to actually dial. Telecom provides this information to
- * {@link ConnectionService}s when placing the call as an instance of {@code GatewayInfo}.
- * <p>
- * The data consists of an address to call, an address to display and the package name of the
- * service. This data is used in two ways:
+ * When calls are made, they may contain gateway information for services which route phone calls
+ * through their own service/numbers. The data consists of a number to call and the package name of
+ * the service. This data is used in two ways:
  * <ol>
- * <li> Call the appropriate gateway address.
- * <li> Display information about how the call is being routed to the user.
+ * <li> Call the appropriate routing number
+ * <li> Display information about how the call is being routed to the user
  * </ol>
  * @hide
  */
@@ -52,39 +48,31 @@ public class GatewayInfo implements Parcelable {
     }
 
     /**
-     * Package name of the gateway provider service that provided the gateway information.
-     * This can be used to identify the gateway address source and to load an appropriate icon when
-     * displaying gateway information in the in-call UI.
+     * Package name of the gateway provider service. used to place the call with.
      */
     public String getGatewayProviderPackageName() {
         return mGatewayProviderPackageName;
     }
 
     /**
-     * Returns the gateway address to dial when placing the call.
+     * Gateway provider address to use when actually placing the call.
      */
     public Uri getGatewayAddress() {
         return mGatewayAddress;
     }
 
     /**
-     * Returns the address that the user is trying to connect to via the gateway.
+     * The actual call address that the user is trying to connect to via the gateway.
      */
     public Uri getOriginalAddress() {
         return mOriginalAddress;
     }
 
-    /**
-     * Indicates whether this {@code GatewayInfo} instance contains any data. A returned value of
-     * false indicates that no gateway number is being used for the call.
-     */
     public boolean isEmpty() {
         return TextUtils.isEmpty(mGatewayProviderPackageName) || mGatewayAddress == null;
     }
 
-    /**
-     * The Parcelable interface.
-     * */
+    /** Implement the Parcelable interface */
     public static final Parcelable.Creator<GatewayInfo> CREATOR =
             new Parcelable.Creator<GatewayInfo> () {
 

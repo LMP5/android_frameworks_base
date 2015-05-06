@@ -21,7 +21,6 @@ import java.io.IOException;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
-import android.annotation.NonNull;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.content.res.Resources.Theme;
@@ -58,7 +57,7 @@ import android.util.AttributeSet;
  * @attr ref android.R.styleable#LevelListDrawableItem_drawable
  */
 public class LevelListDrawable extends DrawableContainer {
-    private LevelListState mLevelListState;
+    private final LevelListState mLevelListState;
     private boolean mMutated;
 
     public LevelListDrawable() {
@@ -147,23 +146,11 @@ public class LevelListDrawable extends DrawableContainer {
     @Override
     public Drawable mutate() {
         if (!mMutated && super.mutate() == this) {
-            mLevelListState.mutate();
+            mLevelListState.mLows = mLevelListState.mLows.clone();
+            mLevelListState.mHighs = mLevelListState.mHighs.clone();
             mMutated = true;
         }
         return this;
-    }
-
-    @Override
-    LevelListState cloneConstantState() {
-        return new LevelListState(mLevelListState, this, null);
-    }
-
-    /**
-     * @hide
-     */
-    public void clearMutated() {
-        super.clearMutated();
-        mMutated = false;
     }
 
     private final static class LevelListState extends DrawableContainerState {
@@ -174,18 +161,12 @@ public class LevelListDrawable extends DrawableContainer {
             super(orig, owner, res);
 
             if (orig != null) {
-                // Perform a shallow copy and rely on mutate() to deep-copy.
                 mLows = orig.mLows;
                 mHighs = orig.mHighs;
             } else {
                 mLows = new int[getCapacity()];
                 mHighs = new int[getCapacity()];
             }
-        }
-
-        private void mutate() {
-            mLows = mLows.clone();
-            mHighs = mHighs.clone();
         }
 
         public void addLevel(int low, int high, Drawable drawable) {
@@ -228,17 +209,9 @@ public class LevelListDrawable extends DrawableContainer {
         }
     }
 
-    @Override
-    protected void setConstantState(@NonNull DrawableContainerState state) {
-        super.setConstantState(state);
-
-        if (state instanceof LevelListState) {
-            mLevelListState = (LevelListState) state;
-        }
-    }
-
     private LevelListDrawable(LevelListState state, Resources res) {
-        final LevelListState as = new LevelListState(state, this, res);
+        LevelListState as = new LevelListState(state, this, res);
+        mLevelListState = as;
         setConstantState(as);
         onLevelChange(getLevel());
     }

@@ -84,14 +84,12 @@ int cx = (myView.getLeft() + myView.getRight()) / 2;
 int cy = (myView.getTop() + myView.getBottom()) / 2;
 
 // get the final radius for the clipping circle
-int finalRadius = Math.max(myView.getWidth(), myView.getHeight());
+int finalRadius = myView.getWidth();
 
-// create the animator for this view (the start radius is zero)
+// create and start the animator for this view
+// (the start radius is zero)
 Animator anim =
     ViewAnimationUtils.createCircularReveal(myView, cx, cy, 0, finalRadius);
-
-// make the view visible and start the animation
-myView.setVisibility(View.VISIBLE);
 anim.start();
 </pre>
 

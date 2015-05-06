@@ -43,7 +43,4 @@ final class HdmiMhlLocalDeviceStub {
 
     void sendKeyEvent(int keycode, boolean isPressed) {
     }
-
-    void sendStandby() {
-    }
 }

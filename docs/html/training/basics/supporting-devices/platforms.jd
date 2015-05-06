@@ -1,9 +1,11 @@
 page.title=Supporting Different Platform Versions
 page.metaDescription=Training on how to declare support for minimum and target API levels.
-page.tags=styles
-helpoutsWidget=true
+parent.title=Supporting Different Devices
+parent.link=index.html
 
 trainingnavtop=true
+previous.title=Supporting Different Screens
+previous.link=screens.html
 
 @jd:body
 

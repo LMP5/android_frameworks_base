@@ -46,7 +46,6 @@ public class StackStateAnimator {
     public static final int ANIMATION_DELAY_PER_ELEMENT_INTERRUPTING = 80;
     public static final int ANIMATION_DELAY_PER_ELEMENT_MANUAL = 32;
     public static final int ANIMATION_DELAY_PER_ELEMENT_GO_TO_FULL_SHADE = 48;
-    public static final int ANIMATION_DELAY_PER_ELEMENT_DARK = 24;
     private static final int DELAY_EFFECT_MAX_INDEX_DIFFERENCE = 2;
 
     private static final int TAG_ANIMATOR_TRANSLATION_Y = R.id.translation_y_animator_tag;
@@ -162,12 +161,11 @@ public class StackStateAnimator {
         boolean scaleChanging = child.getScaleX() != viewState.scale;
         boolean alphaChanging = alpha != child.getAlpha();
         boolean heightChanging = viewState.height != child.getActualHeight();
-        boolean darkChanging = viewState.dark != child.isDark();
         boolean topInsetChanging = viewState.clipTopAmount != child.getClipTopAmount();
         boolean wasAdded = mNewAddChildren.contains(child);
         boolean hasDelays = mAnimationFilter.hasDelays;
         boolean isDelayRelevant = yTranslationChanging || zTranslationChanging || scaleChanging ||
-                alphaChanging || heightChanging || topInsetChanging || darkChanging;
+                alphaChanging || heightChanging || topInsetChanging;
         boolean noAnimation = wasAdded;
         long delay = 0;
         long duration = mCurrentLength;
@@ -244,7 +242,7 @@ public class StackStateAnimator {
                 && !noAnimation);
 
         // start dark animation
-        child.setDark(viewState.dark, mAnimationFilter.animateDark && !noAnimation, delay);
+        child.setDark(viewState.dark, mAnimationFilter.animateDark && !noAnimation);
 
         // apply speed bump state
         child.setBelowSpeedBump(viewState.belowSpeedBump);
@@ -264,9 +262,6 @@ public class StackStateAnimator {
 
     private long calculateChildAnimationDelay(StackScrollState.ViewState viewState,
             StackScrollState finalState) {
-        if (mAnimationFilter.hasDarkEvent) {
-            return calculateDelayDark(viewState);
-        }
         if (mAnimationFilter.hasGoToFullShadeEvent) {
             return calculateDelayGoToFullShade(viewState);
         }
@@ -312,20 +307,6 @@ public class StackStateAnimator {
             }
         }
         return minDelay;
-    }
-
-    private long calculateDelayDark(StackScrollState.ViewState viewState) {
-        int referenceIndex;
-        if (mAnimationFilter.darkAnimationOriginIndex ==
-                NotificationStackScrollLayout.AnimationEvent.DARK_ANIMATION_ORIGIN_INDEX_ABOVE) {
-            referenceIndex = 0;
-        } else if (mAnimationFilter.darkAnimationOriginIndex ==
-                NotificationStackScrollLayout.AnimationEvent.DARK_ANIMATION_ORIGIN_INDEX_BELOW) {
-            referenceIndex = mHostLayout.getNotGoneChildCount() - 1;
-        } else {
-            referenceIndex = mAnimationFilter.darkAnimationOriginIndex;
-        }
-        return Math.abs(referenceIndex - viewState.notGoneIndex) * ANIMATION_DELAY_PER_ELEMENT_DARK;
     }
 
     private long calculateDelayGoToFullShade(StackScrollState.ViewState viewState) {
@@ -496,7 +477,6 @@ public class StackStateAnimator {
                 if (newEndValue == 0 && !mWasCancelled) {
                     child.setVisibility(View.INVISIBLE);
                 }
-                // remove the tag when the animation is finished
                 child.setTag(TAG_ANIMATOR_ALPHA, null);
                 child.setTag(TAG_START_ALPHA, null);
                 child.setTag(TAG_END_ALPHA, null);
@@ -518,7 +498,13 @@ public class StackStateAnimator {
             animator.setStartDelay(delay);
         }
         animator.addListener(getGlobalAnimationFinishedListener());
+        // remove the tag when the animation is finished
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
 
+            }
+        });
         startAnimator(animator);
         child.setTag(TAG_ANIMATOR_ALPHA, animator);
         child.setTag(TAG_START_ALPHA, child.getAlpha());
@@ -813,11 +799,6 @@ public class StackStateAnimator {
                         mHostLayout.getOverlay().remove(changingView);
                     }
                 });
-            }  else if (event.animationType ==
-                NotificationStackScrollLayout.AnimationEvent.ANIMATION_TYPE_REMOVE_SWIPED_OUT) {
-                // A race condition can trigger the view to be added to the overlay even though
-                // it is swiped out. So let's remove it
-                mHostLayout.getOverlay().remove(changingView);
             }
             mNewEvents.add(event);
         }

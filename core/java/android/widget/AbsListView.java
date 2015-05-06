@@ -20,7 +20,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
@@ -612,8 +611,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
 
     private final int[] mScrollOffset = new int[2];
     private final int[] mScrollConsumed = new int[2];
-
-    private final float[] mTmpPoint = new float[2];
 
     // Used for offsetting MotionEvents that we feed to the VelocityTracker.
     // In the future it would be nice to be able to give this to the VelocityTracker
@@ -2514,29 +2511,38 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
      * Positions the selector in a way that mimics touch.
      */
     void positionSelectorLikeTouch(int position, View sel, float x, float y) {
-        positionSelector(position, sel, true, x, y);
+        positionSelectorLikeFocus(position, sel);
+
+        if (mSelector != null && position != INVALID_POSITION) {
+            mSelector.setHotspot(x, y);
+        }
     }
 
     /**
      * Positions the selector in a way that mimics keyboard focus.
      */
     void positionSelectorLikeFocus(int position, View sel) {
-        if (mSelector != null && mSelectorPosition != position && position != INVALID_POSITION) {
+        // If we're changing position, update the visibility since the selector
+        // is technically being detached from the previous selection.
+        final Drawable selector = mSelector;
+        final boolean manageState = selector != null && mSelectorPosition != position
+                && position != INVALID_POSITION;
+        if (manageState) {
+            selector.setVisible(false, false);
+        }
+
+        positionSelector(position, sel);
+
+        if (manageState) {
             final Rect bounds = mSelectorRect;
             final float x = bounds.exactCenterX();
             final float y = bounds.exactCenterY();
-            positionSelector(position, sel, true, x, y);
-        } else {
-            positionSelector(position, sel);
+            selector.setVisible(getVisibility() == VISIBLE, false);
+            selector.setHotspot(x, y);
         }
     }
 
     void positionSelector(int position, View sel) {
-        positionSelector(position, sel, false, -1, -1);
-    }
-
-    private void positionSelector(int position, View sel, boolean manageHotspot, float x, float y) {
-        final boolean positionChanged = position != mSelectorPosition;
         if (position != INVALID_POSITION) {
             mSelectorPosition = position;
         }
@@ -2556,22 +2562,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         // Update the selector drawable.
         final Drawable selector = mSelector;
         if (selector != null) {
-            if (positionChanged) {
-                // Wipe out the current selector state so that we can start
-                // over in the new position with a fresh state.
-                selector.setVisible(false, false);
-                selector.setState(StateSet.NOTHING);
-            }
             selector.setBounds(selectorRect);
-            if (positionChanged) {
-                if (getVisibility() == VISIBLE) {
-                    selector.setVisible(true, false);
-                }
-                updateSelectorState();
-            }
-            if (manageHotspot) {
-                selector.setHotspot(x, y);
-            }
         }
 
         final boolean isChildViewEnabled = mIsChildViewEnabled;
@@ -2674,7 +2665,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
      * @return True if the selector should be shown
      */
     boolean shouldShowSelector() {
-        return (isFocused() && !isInTouchMode()) || (touchModeDrawsInPressedState() && isPressed());
+        return (!isInTouchMode()) || (touchModeDrawsInPressedState() && isPressed());
     }
 
     private void drawSelector(Canvas canvas) {
@@ -2861,10 +2852,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
             mDataChanged = true;
             mOldItemCount = mItemCount;
             mItemCount = mAdapter.getCount();
-        }
-        // Position the fast scroller of list view when rtl.
-        if (isLayoutRtl() && mFastScroll != null) {
-            mFastScroll.setScrollbarPosition(getVerticalScrollbarPosition());
         }
     }
 
@@ -3213,12 +3200,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         // get the selector in the right state, but we don't want to press each child.
     }
 
-    @Override
-    public void dispatchDrawableHotspotChanged(float x, float y) {
-        // Don't dispatch hotspot changes to children. We'll manually handle
-        // calling drawableHotspotChanged on the correct child.
-    }
-
     /**
      * Maps a point to a position in the list.
      *
@@ -3277,11 +3258,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     mLayoutMode = LAYOUT_NORMAL;
 
                     if (!mDataChanged) {
-                        final float[] point = mTmpPoint;
-                        point[0] = x;
-                        point[1] = y;
-                        transformPointToViewLocal(point, child);
-                        child.drawableHotspotChanged(point[0], point[1]);
                         child.setPressed(true);
                         setPressed(true);
                         layoutChildren();
@@ -3782,10 +3758,10 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                 }
                 // Otherwise, check containment within list bounds. If we're
                 // outside bounds, cancel any active presses.
-                final View motionView = getChildAt(mMotionPosition - mFirstPosition);
                 final float x = ev.getX(pointerIndex);
                 if (!pointInView(x, y, mTouchSlop)) {
                     setPressed(false);
+                    final View motionView = getChildAt(mMotionPosition - mFirstPosition);
                     if (motionView != null) {
                         motionView.setPressed(false);
                     }
@@ -3793,13 +3769,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                             mPendingCheckForTap : mPendingCheckForLongPress);
                     mTouchMode = TOUCH_MODE_DONE_WAITING;
                     updateSelectorState();
-                } else if (motionView != null) {
-                    // Still within bounds, update the hotspot.
-                    final float[] point = mTmpPoint;
-                    point[0] = x;
-                    point[1] = y;
-                    transformPointToViewLocal(point, motionView);
-                    motionView.drawableHotspotChanged(point[0], point[1]);
                 }
                 break;
             case TOUCH_MODE_SCROLL:
@@ -4696,7 +4665,7 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         if (mPositionScroller == null) {
             mPositionScroller = createPositionScroller();
         }
-        mPositionScroller.startWithOffset(position, offset);
+        mPositionScroller.startWithOffset(position, offset, offset);
     }
 
     /**
@@ -4953,7 +4922,9 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     if (position >= headerViewsCount && position < footerViewsStart) {
                         // The view will be rebound to new data, clear any
                         // system-managed transient state.
-                        child.clearAccessibilityFocus();
+                        if (child.isAccessibilityFocused()) {
+                            child.clearAccessibilityFocus();
+                        }
                         mRecycler.addScrapView(child, position);
                     }
                 }
@@ -4974,7 +4945,9 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     if (position >= headerViewsCount && position < footerViewsStart) {
                         // The view will be rebound to new data, clear any
                         // system-managed transient state.
-                        child.clearAccessibilityFocus();
+                        if (child.isAccessibilityFocused()) {
+                            child.clearAccessibilityFocus();
+                        }
                         mRecycler.addScrapView(child, position);
                     }
                 }
@@ -6459,8 +6432,6 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
                     // Note:  We do place AdapterView.ITEM_VIEW_TYPE_IGNORE in active views.
                     //        However, we will NOT place them into scrap views.
                     activeViews[i] = child;
-                    // Remember the position so that setupChild() doesn't reset state.
-                    lp.scrappedFromPosition = firstActivePosition + i;
                 }
             }
         }
@@ -6817,7 +6788,9 @@ public abstract class AbsListView extends AdapterView<ListAdapter> implements Te
         }
 
         private void clearAccessibilityFromScrap(View view) {
-            view.clearAccessibilityFocus();
+            if (view.isAccessibilityFocused()) {
+                view.clearAccessibilityFocus();
+            }
             view.setAccessibilityDelegate(null);
         }
 

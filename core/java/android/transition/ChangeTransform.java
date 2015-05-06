@@ -17,14 +17,11 @@ package android.transition;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.FloatArrayEvaluator;
 import android.animation.ObjectAnimator;
-import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Matrix;
-import android.graphics.Path;
-import android.graphics.PointF;
 import android.util.AttributeSet;
 import android.util.Property;
 import android.view.GhostView;
@@ -59,35 +56,16 @@ public class ChangeTransform extends Transition {
             PROPNAME_PARENT_MATRIX,
     };
 
-    /**
-     * This property sets the animation matrix properties that are not translations.
-     */
-    private static final Property<PathAnimatorMatrix, float[]> NON_TRANSLATIONS_PROPERTY =
-            new Property<PathAnimatorMatrix, float[]>(float[].class, "nonTranslations") {
+    private static final Property<View, Matrix> ANIMATION_MATRIX_PROPERTY =
+            new Property<View, Matrix>(Matrix.class, "animationMatrix") {
                 @Override
-                public float[] get(PathAnimatorMatrix object) {
+                public Matrix get(View object) {
                     return null;
                 }
 
                 @Override
-                public void set(PathAnimatorMatrix object, float[] value) {
-                    object.setValues(value);
-                }
-            };
-
-    /**
-     * This property sets the translation animation matrix properties.
-     */
-    private static final Property<PathAnimatorMatrix, PointF> TRANSLATIONS_PROPERTY =
-            new Property<PathAnimatorMatrix, PointF>(PointF.class, "translations") {
-                @Override
-                public PointF get(PathAnimatorMatrix object) {
-                    return null;
-                }
-
-                @Override
-                public void set(PathAnimatorMatrix object, PointF value) {
-                    object.setTranslation(value);
+                public void set(View object, Matrix value) {
+                    object.setAnimationMatrix(value);
                 }
             };
 
@@ -283,23 +261,8 @@ public class ChangeTransform extends Transition {
         final View view = endValues.view;
         setIdentityTransforms(view);
 
-        final float[] startMatrixValues = new float[9];
-        startMatrix.getValues(startMatrixValues);
-        final float[] endMatrixValues = new float[9];
-        endMatrix.getValues(endMatrixValues);
-        final PathAnimatorMatrix pathAnimatorMatrix =
-                new PathAnimatorMatrix(view, startMatrixValues);
-
-        PropertyValuesHolder valuesProperty = PropertyValuesHolder.ofObject(
-                NON_TRANSLATIONS_PROPERTY, new FloatArrayEvaluator(new float[9]),
-                startMatrixValues, endMatrixValues);
-        Path path = getPathMotion().getPath(startMatrixValues[Matrix.MTRANS_X],
-                startMatrixValues[Matrix.MTRANS_Y], endMatrixValues[Matrix.MTRANS_X],
-                endMatrixValues[Matrix.MTRANS_Y]);
-        PropertyValuesHolder translationProperty = PropertyValuesHolder.ofObject(
-                TRANSLATIONS_PROPERTY, null, path);
-        ObjectAnimator animator = ObjectAnimator.ofPropertyValuesHolder(pathAnimatorMatrix,
-                valuesProperty, translationProperty);
+        ObjectAnimator animator = ObjectAnimator.ofObject(view, ANIMATION_MATRIX_PROPERTY,
+                new TransitionUtils.MatrixEvaluator(), startMatrix, endMatrix);
 
         final Matrix finalEndMatrix = endMatrix;
 
@@ -322,13 +285,14 @@ public class ChangeTransform extends Transition {
                         view.setTagInternal(R.id.parentMatrix, null);
                     }
                 }
-                view.setAnimationMatrix(null);
+                ANIMATION_MATRIX_PROPERTY.set(view, null);
                 transforms.restore(view);
             }
 
             @Override
             public void onAnimationPause(Animator animation) {
-                Matrix currentMatrix = pathAnimatorMatrix.getMatrix();
+                ValueAnimator animator = (ValueAnimator) animation;
+                Matrix currentMatrix = (Matrix) animator.getAnimatedValue();
                 setCurrentMatrix(currentMatrix);
             }
 
@@ -376,7 +340,7 @@ public class ChangeTransform extends Transition {
         while (outerTransition.mParent != null) {
             outerTransition = outerTransition.mParent;
         }
-        GhostListener listener = new GhostListener(view, startValues.view, ghostView);
+        GhostListener listener = new GhostListener(view, ghostView, endMatrix);
         outerTransition.addListener(listener);
 
         if (startValues.view != endValues.view) {
@@ -466,13 +430,13 @@ public class ChangeTransform extends Transition {
 
     private static class GhostListener extends Transition.TransitionListenerAdapter {
         private View mView;
-        private View mStartView;
         private GhostView mGhostView;
+	private Matrix mEndMatrix;
 
-        public GhostListener(View view, View startView, GhostView ghostView) {
+        public GhostListener(View view, GhostView ghostView, Matrix endMatrix) {
             mView = view;
-            mStartView = startView;
             mGhostView = ghostView;
+            mEndMatrix = endMatrix;
         }
 
         @Override
@@ -481,7 +445,6 @@ public class ChangeTransform extends Transition {
             GhostView.removeGhost(mView);
             mView.setTagInternal(R.id.transitionTransform, null);
             mView.setTagInternal(R.id.parentMatrix, null);
-            mStartView.setTransitionAlpha(1);
         }
 
         @Override
@@ -492,49 +455,6 @@ public class ChangeTransform extends Transition {
         @Override
         public void onTransitionResume(Transition transition) {
             mGhostView.setVisibility(View.VISIBLE);
-        }
-    }
-
-    /**
-     * PathAnimatorMatrix allows the translations and the rest of the matrix to be set
-     * separately. This allows the PathMotion to affect the translations while scale
-     * and rotation are evaluated separately.
-     */
-    private static class PathAnimatorMatrix {
-        private final Matrix mMatrix = new Matrix();
-        private final View mView;
-        private final float[] mValues;
-        private float mTranslationX;
-        private float mTranslationY;
-
-        public PathAnimatorMatrix(View view, float[] values) {
-            mView = view;
-            mValues = values.clone();
-            mTranslationX = mValues[Matrix.MTRANS_X];
-            mTranslationY = mValues[Matrix.MTRANS_Y];
-            setAnimationMatrix();
-        }
-
-        public void setValues(float[] values) {
-            System.arraycopy(values, 0, mValues, 0, values.length);
-            setAnimationMatrix();
-        }
-
-        public void setTranslation(PointF translation) {
-            mTranslationX = translation.x;
-            mTranslationY = translation.y;
-            setAnimationMatrix();
-        }
-
-        private void setAnimationMatrix() {
-            mValues[Matrix.MTRANS_X] = mTranslationX;
-            mValues[Matrix.MTRANS_Y] = mTranslationY;
-            mMatrix.setValues(mValues);
-            mView.setAnimationMatrix(mMatrix);
-        }
-
-        public Matrix getMatrix() {
-            return mMatrix;
         }
     }
 }

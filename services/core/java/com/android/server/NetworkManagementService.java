@@ -245,7 +245,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
 
         mDaemonHandler = new Handler(FgThread.get().getLooper());
 
-        mPhoneStateListener = new PhoneStateListener(SubscriptionManager.DEFAULT_SUBSCRIPTION_ID,
+        mPhoneStateListener = new PhoneStateListener(SubscriptionManager.DEFAULT_SUB_ID,
                 mDaemonHandler.getLooper()) {
             @Override
             public void onDataConnectionRealTimeInfoChanged(
@@ -260,7 +260,6 @@ public class NetworkManagementService extends INetworkManagementService.Stub
             tm.listen(mPhoneStateListener,
                     PhoneStateListener.LISTEN_DATA_CONNECTION_REAL_TIME_INFO);
         }
-        //mPhoneStateListener = null;
 
         // Add ourself to the Watchdog monitors.
         Watchdog.getInstance().addMonitor(this);
@@ -735,7 +734,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub
                         timestampNanos = SystemClock.elapsedRealtimeNanos();
                     }
                     boolean isActive = cooked[2].equals("active");
-                    notifyInterfaceClassActivity(cooked[3] == null ? 0 : Integer.parseInt(cooked[3]),
+                    notifyInterfaceClassActivity(Integer.parseInt(cooked[3]),
                             isActive ? DataConnectionRealTimeInfo.DC_POWER_STATE_HIGH
                             : DataConnectionRealTimeInfo.DC_POWER_STATE_LOW, timestampNanos, false);
                     return true;
@@ -1002,17 +1001,6 @@ public class NetworkManagementService extends INetworkManagementService.Stub
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
         try {
             mConnector.execute("interface", "ipv6", iface, "disable");
-        } catch (NativeDaemonConnectorException e) {
-            throw e.rethrowAsParcelableException();
-        }
-    }
-
-    @Override
-    public void setInterfaceIpv6NdOffload(String iface, boolean enable) {
-        mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
-        try {
-            mConnector.execute(
-                    "interface", "ipv6ndoffload", iface, (enable ? "enable" : "disable"));
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
         }
@@ -1781,18 +1769,14 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     public void setDnsServersForNetwork(int netId, String[] servers, String domains) {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
 
-        Command cmd;
-        if (servers.length > 0) {
-            cmd = new Command("resolver", "setnetdns", netId,
-                    (domains == null ? "" : domains));
-            for (String s : servers) {
-                InetAddress a = NetworkUtils.numericToInetAddress(s);
-                if (a.isAnyLocalAddress() == false) {
-                    cmd.appendArg(a.getHostAddress());
-                }
+        final Command cmd = new Command("resolver", "setnetdns", netId,
+                (domains == null ? "" : domains));
+
+        for (String s : servers) {
+            InetAddress a = NetworkUtils.numericToInetAddress(s);
+            if (a.isAnyLocalAddress() == false) {
+                cmd.appendArg(a.getHostAddress());
             }
-        } else {
-            cmd = new Command("resolver", "clearnetdns", netId);
         }
 
         try {
@@ -1940,23 +1924,23 @@ public class NetworkManagementService extends INetworkManagementService.Stub
     }
 
     @Override
-    public void stopClatd(String interfaceName) throws IllegalStateException {
+    public void stopClatd() throws IllegalStateException {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
 
         try {
-            mConnector.execute("clatd", "stop", interfaceName);
+            mConnector.execute("clatd", "stop");
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
         }
     }
 
     @Override
-    public boolean isClatdStarted(String interfaceName) {
+    public boolean isClatdStarted() {
         mContext.enforceCallingOrSelfPermission(CONNECTIVITY_INTERNAL, TAG);
 
         final NativeDaemonEvent event;
         try {
-            event = mConnector.execute("clatd", "status", interfaceName);
+            event = mConnector.execute("clatd", "status");
         } catch (NativeDaemonConnectorException e) {
             throw e.rethrowAsParcelableException();
         }

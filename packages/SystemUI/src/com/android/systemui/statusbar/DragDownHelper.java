@@ -126,8 +126,7 @@ public class DragDownHelper implements Gefingerpoken {
                 }
                 return true;
             case MotionEvent.ACTION_UP:
-                if (mDraggedFarEnough && mDragDownCallback.onDraggedDown(mStartingChild,
-                        (int) (y - mInitialTouchY))) {
+                if (mDraggedFarEnough && mDragDownCallback.onDraggedDown(mStartingChild)) {
                     if (mStartingChild == null) {
                         mDragDownCallback.setEmptyDragAmount(0f);
                     }
@@ -222,7 +221,7 @@ public class DragDownHelper implements Gefingerpoken {
         /**
          * @return true if the interaction is accepted, false if it should be cancelled
          */
-        boolean onDraggedDown(View startingChild, int dragLengthY);
+        boolean onDraggedDown(View startingChild);
         void onDragDownReset();
         void onThresholdReached();
         void onTouchSlopExceeded();

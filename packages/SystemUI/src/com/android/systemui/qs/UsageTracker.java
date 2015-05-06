@@ -18,13 +18,11 @@ package com.android.systemui.qs;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 
 import com.android.systemui.R;
-import com.android.systemui.statusbar.phone.SystemUIDialog;
 import com.android.systemui.statusbar.policy.Listenable;
 
 public class UsageTracker implements Listenable {
@@ -37,10 +35,11 @@ public class UsageTracker implements Listenable {
 
     private boolean mRegistered;
 
-    public UsageTracker(Context context, Class<?> tile, int timeoutResource) {
+    public UsageTracker(Context context, Class<?> tile) {
         mContext = context;
         mPrefKey = tile.getSimpleName() + "LastUsed";
-        mTimeToShowTile = MILLIS_PER_DAY * mContext.getResources().getInteger(timeoutResource);
+        mTimeToShowTile = MILLIS_PER_DAY * mContext.getResources()
+                .getInteger(R.integer.days_to_show_timeout_tiles);
         mResetAction = "com.android.systemui.qs." + tile.getSimpleName() + ".usage_reset";
     }
 
@@ -66,25 +65,6 @@ public class UsageTracker implements Listenable {
 
     public void reset() {
         getSharedPrefs().edit().remove(mPrefKey).commit();
-    }
-
-    public void showResetConfirmation(String title, final Runnable onConfirmed) {
-        final SystemUIDialog d = new SystemUIDialog(mContext);
-        d.setTitle(title);
-        d.setMessage(mContext.getString(R.string.quick_settings_reset_confirmation_message));
-        d.setNegativeButton(android.R.string.cancel, null);
-        d.setPositiveButton(R.string.quick_settings_reset_confirmation_button,
-                new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                reset();
-                if (onConfirmed != null) {
-                    onConfirmed.run();
-                }
-            }
-        });
-        d.setCanceledOnTouchOutside(true);
-        d.show();
     }
 
     private SharedPreferences getSharedPrefs() {

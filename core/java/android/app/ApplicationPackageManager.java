@@ -1653,18 +1653,6 @@ final class ApplicationPackageManager extends PackageManager {
         return null;
     }
 
-    /**
-     * @hide
-     */
-    @Override
-    public boolean isUpgrade() {
-        try {
-            return mPM.isUpgrade();
-        } catch (RemoteException e) {
-            return false;
-        }
-    }
-
     @Override
     public void setComponentProtectedSetting(ComponentName componentName, boolean newState) {
         try {
@@ -1729,17 +1717,6 @@ final class ApplicationPackageManager extends PackageManager {
      * @hide
      */
     public Drawable loadItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo) {
-        Drawable dr = loadUnbadgedItemIcon(itemInfo, appInfo);
-        if (itemInfo.showUserIcon != UserHandle.USER_NULL) {
-            return dr;
-        }
-        return getUserBadgedIcon(dr, new UserHandle(mContext.getUserId()));
-    }
-
-    /**
-     * @hide
-     */
-    public Drawable loadUnbadgedItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo) {
         if (itemInfo.showUserIcon != UserHandle.USER_NULL) {
             Bitmap bitmap = getUserManager().getUserIcon(itemInfo.showUserIcon);
             if (bitmap == null) {
@@ -1754,7 +1731,7 @@ final class ApplicationPackageManager extends PackageManager {
         if (dr == null) {
             dr = itemInfo.loadDefaultIcon(this);
         }
-        return dr;
+        return getUserBadgedIcon(dr, new UserHandle(mContext.getUserId()));
     }
 
     private Drawable getBadgedDrawable(Drawable drawable, Drawable badgeDrawable,

@@ -85,9 +85,4 @@ oneway interface IWindow {
      * is done.
      */
     void doneAnimating();
-
-    /**
-     * Called for non-application windows when the enter animation has completed.
-     */
-    void dispatchWindowShown();
 }

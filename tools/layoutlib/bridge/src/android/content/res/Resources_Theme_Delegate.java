@@ -39,6 +39,9 @@ import android.util.TypedValue;
  */
 public class Resources_Theme_Delegate {
 
+    // Whether to use the Theme.mThemeResId as primary theme.
+    boolean force;
+
     // ---- delegate manager ----
 
     private static final DelegateManager<Resources_Theme_Delegate> sManager =
@@ -55,8 +58,7 @@ public class Resources_Theme_Delegate {
             Resources thisResources, Theme thisTheme,
             int[] attrs) {
         boolean changed = setupResources(thisTheme);
-        BridgeTypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(attrs);
-        ta.setTheme(thisTheme);
+        TypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(attrs);
         restoreResources(changed);
         return ta;
     }
@@ -67,9 +69,7 @@ public class Resources_Theme_Delegate {
             int resid, int[] attrs)
             throws NotFoundException {
         boolean changed = setupResources(thisTheme);
-        BridgeTypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(resid,
-                attrs);
-        ta.setTheme(thisTheme);
+        TypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(resid, attrs);
         restoreResources(changed);
         return ta;
     }
@@ -79,9 +79,8 @@ public class Resources_Theme_Delegate {
             Resources thisResources, Theme thisTheme,
             AttributeSet set, int[] attrs, int defStyleAttr, int defStyleRes) {
         boolean changed = setupResources(thisTheme);
-        BridgeTypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(set,
-                attrs, defStyleAttr, defStyleRes);
-        ta.setTheme(thisTheme);
+        TypedArray ta = RenderSessionImpl.getCurrentContext().obtainStyledAttributes(set, attrs,
+                defStyleAttr, defStyleRes);
         restoreResources(changed);
         return ta;
     }
@@ -92,8 +91,8 @@ public class Resources_Theme_Delegate {
             int resid, TypedValue outValue,
             boolean resolveRefs) {
         boolean changed = setupResources(thisTheme);
-        boolean found =  RenderSessionImpl.getCurrentContext().resolveThemeAttribute(resid,
-                outValue, resolveRefs);
+        boolean found =  RenderSessionImpl.getCurrentContext().resolveThemeAttribute(
+                resid, outValue, resolveRefs);
         restoreResources(changed);
         return found;
     }
@@ -108,29 +107,14 @@ public class Resources_Theme_Delegate {
     // ---- private helper methods ----
 
     private static boolean setupResources(Theme thisTheme) {
-        // Key is a space-separated list of theme ids applied that have been merged into the
-        // BridgeContext's theme to make thisTheme.
-        String[] appliedStyles = thisTheme.getKey().split(" ");
-        boolean changed = false;
-        for (String s : appliedStyles) {
-            if (s.isEmpty()) {
-                continue;
-            }
-            // See the definition of force parameter in Theme.applyStyle().
-            boolean force = false;
-            if (s.charAt(s.length() - 1) == '!') {
-                force = true;
-                s = s.substring(0, s.length() - 1);
-            }
-            int styleId = Integer.parseInt(s, 16);
-            StyleResourceValue style = resolveStyle(styleId);
-            if (style != null) {
-                RenderSessionImpl.getCurrentContext().getRenderResources().applyStyle(style, force);
-                changed = true;
-            }
-
+        Resources_Theme_Delegate themeDelegate = sManager.getDelegate(thisTheme.getNativeTheme());
+        StyleResourceValue style = resolveStyle(thisTheme.getAppliedStyleResId());
+        if (style != null) {
+            RenderSessionImpl.getCurrentContext().getRenderResources()
+                    .applyStyle(style, themeDelegate.force);
+            return true;
         }
-        return changed;
+        return false;
     }
 
     private static void restoreResources(boolean changed) {

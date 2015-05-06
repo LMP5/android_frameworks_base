@@ -37,7 +37,6 @@ import android.view.View.AttachInfo;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.HashSet;
 
 /**
@@ -67,8 +66,6 @@ public class ThreadedRenderer extends HardwareRenderer {
     private static final int SYNC_OK = 0;
     // Needs a ViewRoot invalidate
     private static final int SYNC_INVALIDATE_REQUIRED = 1 << 0;
-    // Spoiler: the reward is GPU-accelerated drawing, better find that Surface!
-    private static final int SYNC_LOST_SURFACE_REWARD_IF_FOUND = 1 << 1;
 
     private static final String[] VISUALIZERS = {
         PROFILE_PROPERTY_VISUALIZE_BARS,
@@ -156,8 +153,8 @@ public class ThreadedRenderer extends HardwareRenderer {
     }
 
     @Override
-    boolean pauseSurface(Surface surface) {
-        return nPauseSurface(mNativeProxy, surface);
+    void pauseSurface(Surface surface) {
+        nPauseSurface(mNativeProxy, surface);
     }
 
     @Override
@@ -194,8 +191,7 @@ public class ThreadedRenderer extends HardwareRenderer {
         final float lightX = width / 2.0f;
         mWidth = width;
         mHeight = height;
-        if (surfaceInsets != null && (surfaceInsets.left != 0 || surfaceInsets.right != 0
-                || surfaceInsets.top != 0 || surfaceInsets.bottom != 0)) {
+        if (surfaceInsets != null && !surfaceInsets.isEmpty()) {
             mHasInsets = true;
             mInsetLeft = surfaceInsets.left;
             mInsetTop = surfaceInsets.top;
@@ -259,9 +255,6 @@ public class ThreadedRenderer extends HardwareRenderer {
             mProfilingEnabled = wantProfiling;
             changed = true;
         }
-        if (changed) {
-            invalidateRoot();
-        }
         return changed;
     }
 
@@ -275,7 +268,7 @@ public class ThreadedRenderer extends HardwareRenderer {
     }
 
     private void updateRootDisplayList(View view, HardwareDrawCallbacks callbacks) {
-        Trace.traceBegin(Trace.TRACE_TAG_VIEW, "Record View#draw()");
+        Trace.traceBegin(Trace.TRACE_TAG_VIEW, "getDisplayList");
         updateViewTreeDisplayList(view);
 
         if (mRootNodeNeedsUpdate || !mRootNode.isValid()) {
@@ -339,13 +332,6 @@ public class ThreadedRenderer extends HardwareRenderer {
 
         int syncResult = nSyncAndDrawFrame(mNativeProxy, frameTimeNanos,
                 recordDuration, view.getResources().getDisplayMetrics().density);
-        if ((syncResult & SYNC_LOST_SURFACE_REWARD_IF_FOUND) != 0) {
-            setEnabled(false);
-            attachInfo.mViewRootImpl.mSurface.release();
-            // Invalidate since we failed to draw. This should fetch a Surface
-            // if it is still needed or do nothing if we are no longer drawing
-            attachInfo.mViewRootImpl.invalidate();
-        }
         if ((syncResult & SYNC_INVALIDATE_REQUIRED) != 0) {
             attachInfo.mViewRootImpl.invalidate();
         }
@@ -466,13 +452,11 @@ public class ThreadedRenderer extends HardwareRenderer {
             final LongSparseArray<Drawable.ConstantState> drawables = resources.getPreloadedDrawables();
 
             final int count = drawables.size();
-            ArrayList<Bitmap> tmpList = new ArrayList<Bitmap>();
             for (int i = 0; i < count; i++) {
-                drawables.valueAt(i).addAtlasableBitmaps(tmpList);
-                for (int j = 0; j < tmpList.size(); j++) {
-                    preloadedPointers.add(tmpList.get(j).mNativeBitmap);
+                final Bitmap bitmap = drawables.valueAt(i).getBitmap();
+                if (bitmap != null && bitmap.getConfig() == Bitmap.Config.ARGB_8888) {
+                    preloadedPointers.add(bitmap.mNativeBitmap);
                 }
-                tmpList.clear();
             }
 
             for (int i = 0; i < map.length; i += 4) {
@@ -497,7 +481,7 @@ public class ThreadedRenderer extends HardwareRenderer {
 
     private static native boolean nInitialize(long nativeProxy, Surface window);
     private static native void nUpdateSurface(long nativeProxy, Surface window);
-    private static native boolean nPauseSurface(long nativeProxy, Surface window);
+    private static native void nPauseSurface(long nativeProxy, Surface window);
     private static native void nSetup(long nativeProxy, int width, int height,
             float lightX, float lightY, float lightZ, float lightRadius,
             int ambientShadowAlpha, int spotShadowAlpha);

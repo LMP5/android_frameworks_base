@@ -255,7 +255,7 @@ void PathCache::trim() {
 
 PathTexture* PathCache::addTexture(const PathDescription& entry, const SkPath *path,
         const SkPaint* paint) {
-    ATRACE_NAME("Generate Path Texture");
+    ATRACE_CALL();
 
     float left, top, offset;
     uint32_t width, height;
@@ -493,9 +493,7 @@ void PathCache::precache(const SkPath* path, const SkPaint* paint) {
         if (mProcessor == NULL) {
             mProcessor = new PathProcessor(Caches::getInstance());
         }
-        if (!mProcessor->add(task)) {
-            mProcessor->process(task);
-        }
+        mProcessor->add(task);
     }
 }
 

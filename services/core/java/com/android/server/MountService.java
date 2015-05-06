@@ -754,9 +754,6 @@ class MountService extends IMountService.Stub
         synchronized (mVolumesLock) {
             oldState = mVolumeStates.put(path, state);
             volume.setState(state);
-            if (!Environment.MEDIA_FORMATTING.equals(state)) {
-                volume.setIsFormatting(false);
-            }
         }
 
         if (state.equals(oldState)) {
@@ -767,22 +764,20 @@ class MountService extends IMountService.Stub
 
         Slog.d(TAG, "volume state changed for " + path + " (" + oldState + " -> " + state + ")");
 
-        // Tell PackageManager about changes, only to the non-emulated
-        // storage volumes.
-        if (!volume.isEmulated()) {
-            if (Environment.MEDIA_UNMOUNTED.equals(state)) {
-                mPms.updateExternalMediaStatus(false, false);
+        // Tell PackageManager about changes, not only to primary volume,
+        // to all the non-emulated storage volumes
+        if (Environment.MEDIA_UNMOUNTED.equals(state)) {
+            mPms.updateExternalMediaStatus(false, false);
 
-                /*
-             * Some OBBs might have been unmounted when this volume was
-             * unmounted, so send a message to the handler to let it know to
-             * remove those from the list of mounted OBBS.
-             */
-                mObbActionHandler.sendMessage(mObbActionHandler.obtainMessage(
-                        OBB_FLUSH_MOUNT_STATE, path));
-            } else if (Environment.MEDIA_MOUNTED.equals(state)) {
-                mPms.updateExternalMediaStatus(true, false);
-            }
+            /*
+         * Some OBBs might have been unmounted when this volume was
+         * unmounted, so send a message to the handler to let it know to
+         * remove those from the list of mounted OBBS.
+         */
+            mObbActionHandler.sendMessage(mObbActionHandler.obtainMessage(
+                    OBB_FLUSH_MOUNT_STATE, path));
+        } else if (Environment.MEDIA_MOUNTED.equals(state)) {
+            mPms.updateExternalMediaStatus(true, false);
         }
 
         synchronized (mListeners) {
@@ -1104,9 +1099,6 @@ class MountService extends IMountService.Stub
         } else if (newState == VolumeState.Unmounting) {
             action = Intent.ACTION_MEDIA_EJECT;
         } else if (newState == VolumeState.Formatting) {
-            synchronized (mVolumesLock) {
-                volume.setIsFormatting(true);
-            }
         } else if (newState == VolumeState.Shared) {
             if (DEBUG_EVENTS) Slog.i(TAG, "Updating volume state media mounted");
             /* Send the media unmounted event first */
@@ -1135,9 +1127,6 @@ class MountService extends IMountService.Stub
         final StorageVolume volume;
         synchronized (mVolumesLock) {
             volume = mVolumesByPath.get(path);
-            if (volume.getIsFormatting()) {
-                return StorageResultCode.OperationFailedStorageBusy;
-            }
         }
 
         if (!volume.isEmulated() && hasUserRestriction(UserManager.DISALLOW_MOUNT_PHYSICAL_MEDIA)) {
@@ -1408,8 +1397,6 @@ class MountService extends IMountService.Stub
                             com.android.internal.R.styleable.Storage_mtpReserve, 0);
                     boolean allowMassStorage = a.getBoolean(
                             com.android.internal.R.styleable.Storage_allowMassStorage, false);
-                    boolean allowMtp = a.getBoolean(
-                            com.android.internal.R.styleable.Storage_allowMtp, true);
                     // resource parser does not support longs, so XML value is in megabytes
                     long maxFileSize = a.getInt(
                             com.android.internal.R.styleable.Storage_maxFileSize, 0) * 1024L * 1024L;
@@ -1418,13 +1405,13 @@ class MountService extends IMountService.Stub
                             " primary: " + primary + " removable: " + removable +
                             " emulated: " + emulated +  " mtpReserve: " + mtpReserve +
                             " allowMassStorage: " + allowMassStorage +
-                            " maxFileSize: " + maxFileSize + " allowMtp: " + allowMtp);
+                            " maxFileSize: " + maxFileSize);
 
                     if (emulated) {
                         // For devices with emulated storage, we create separate
                         // volumes for each known user.
                         mEmulatedTemplate = new StorageVolume(null, descriptionId, true, false,
-                                true, mtpReserve, false, maxFileSize, null, allowMtp);
+                                true, mtpReserve, false, maxFileSize, null);
 
                         final UserManagerService userManager = UserManagerService.getInstance();
                         for (UserInfo user : userManager.getUsers(false)) {
@@ -1437,7 +1424,7 @@ class MountService extends IMountService.Stub
                         } else {
                             final StorageVolume volume = new StorageVolume(new File(path),
                                     descriptionId, primary, removable, emulated, mtpReserve,
-                                    allowMassStorage, maxFileSize, null, allowMtp);
+                                    allowMassStorage, maxFileSize, null);
                             addVolumeLocked(volume);
 
                             // Until we hear otherwise, treat as unmounted

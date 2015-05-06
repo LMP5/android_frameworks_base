@@ -1,6 +1,4 @@
 page.title=Stacking Notifications
-page.tags=notifications
-helpoutsWidget=true
 
 @jd:body
 
@@ -47,7 +45,7 @@ final static String GROUP_KEY_EMAILS = "group_key_emails";
 Notification notif = new NotificationCompat.Builder(mContext)
          .setContentTitle("New mail from " + sender1)
          .setContentText(subject1)
-         .setSmallIcon(R.drawable.new_mail)
+         .setSmallIcon(R.drawable.new_mail);
          .setGroup(GROUP_KEY_EMAILS)
          .build();
 
@@ -67,7 +65,7 @@ instead of as a new card:</p>
 Notification notif2 = new NotificationCompat.Builder(mContext)
          .setContentTitle("New mail from " + sender2)
          .setContentText(subject2)
-         .setSmallIcon(R.drawable.new_mail)
+         .setSmallIcon(R.drawable.new_mail);
          .setGroup(GROUP_KEY_EMAILS)
          .build();
 
@@ -89,7 +87,7 @@ notification and call {@link android.support.v4.app.NotificationCompat.Builder#s
 on the summary notification.</p>
 
 <p>This notification does not appear in your stack of notifications on the wearable, but
-it appears as the only notification on the handheld device.</p>
+appears as the only notification on the handheld device.</p>
 
 <pre style="clear:right">
 Bitmap largeIcon = BitmapFactory.decodeResource(getResources(),

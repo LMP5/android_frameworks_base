@@ -51,9 +51,6 @@ public class MediaSessionStack {
 
     private MediaSessionRecord mGlobalPrioritySession;
 
-    // The last record that either entered one of the playing states or was
-    // added.
-    private MediaSessionRecord mLastInterestingRecord;
     private MediaSessionRecord mCachedButtonReceiver;
     private MediaSessionRecord mCachedDefault;
     private MediaSessionRecord mCachedVolumeDefault;
@@ -68,7 +65,6 @@ public class MediaSessionStack {
     public void addSession(MediaSessionRecord record) {
         mSessions.add(record);
         clearCache();
-        mLastInterestingRecord = record;
     }
 
     /**
@@ -97,9 +93,6 @@ public class MediaSessionStack {
             mSessions.remove(record);
             mSessions.add(0, record);
             clearCache();
-            // This becomes the last interesting record since it entered a
-            // playing state
-            mLastInterestingRecord = record;
             return true;
         } else if (!MediaSession.isActiveState(newState)) {
             // Just clear the volume cache when a state goes inactive
@@ -175,11 +168,9 @@ public class MediaSessionStack {
      * Get the highest priority session that can handle media buttons.
      *
      * @param userId The user to check.
-     * @param includeNotPlaying Return a non-playing session if nothing else is
-     *            available
      * @return The default media button session or null.
      */
-    public MediaSessionRecord getDefaultMediaButtonSession(int userId, boolean includeNotPlaying) {
+    public MediaSessionRecord getDefaultMediaButtonSession(int userId) {
         if (mGlobalPrioritySession != null && mGlobalPrioritySession.isActive()) {
             return mGlobalPrioritySession;
         }
@@ -189,25 +180,7 @@ public class MediaSessionStack {
         ArrayList<MediaSessionRecord> records = getPriorityListLocked(true,
                 MediaSession.FLAG_HANDLES_MEDIA_BUTTONS, userId);
         if (records.size() > 0) {
-            MediaSessionRecord record = records.get(0);
-            if (record.isPlaybackActive(false)) {
-                // Since we're going to send a button event to this record make
-                // it the last interesting one.
-                mLastInterestingRecord = record;
-                mCachedButtonReceiver = record;
-            } else if (mLastInterestingRecord != null) {
-                if (records.contains(mLastInterestingRecord)) {
-                    mCachedButtonReceiver = mLastInterestingRecord;
-                } else {
-                    // That record is no longer used. Clear its reference.
-                    mLastInterestingRecord = null;
-                }
-            }
-            if (includeNotPlaying && mCachedButtonReceiver == null) {
-                // If we really want a record and we didn't find one yet use the
-                // highest priority session even if it's not playing.
-                mCachedButtonReceiver = record;
-            }
+            mCachedButtonReceiver = records.get(0);
         }
         return mCachedButtonReceiver;
     }

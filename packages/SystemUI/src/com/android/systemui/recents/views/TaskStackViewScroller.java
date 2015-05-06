@@ -23,7 +23,6 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.widget.OverScroller;
 import com.android.systemui.recents.RecentsConfiguration;
-import com.android.systemui.recents.misc.Utilities;
 
 /* The scrolling logic for a TaskStackView */
 public class TaskStackViewScroller {
@@ -39,18 +38,12 @@ public class TaskStackViewScroller {
 
     OverScroller mScroller;
     ObjectAnimator mScrollAnimator;
-    float mFinalAnimatedScroll;
 
     public TaskStackViewScroller(Context context, RecentsConfiguration config, TaskStackViewLayoutAlgorithm layoutAlgorithm) {
         mConfig = config;
         mScroller = new OverScroller(context);
         mLayoutAlgorithm = layoutAlgorithm;
         setStackScroll(getStackScroll());
-    }
-
-    /** Resets the task scroller. */
-    void reset() {
-        mStackScrollP = 0f;
     }
 
     /** Sets the callbacks */
@@ -76,14 +69,9 @@ public class TaskStackViewScroller {
         mStackScrollP = s;
     }
 
-    /**
-     * Sets the current stack scroll to the initial state when you first enter recents.
-     * @return whether the stack progress changed.
-     */
-    public boolean setStackScrollToInitialState() {
-        float prevStackScrollP = mStackScrollP;
+    /** Sets the current stack scroll to the initial state when you first enter recents */
+    public void setStackScrollToInitialState() {
         setStackScroll(getBoundedStackScroll(mLayoutAlgorithm.mInitialScrollP));
-        return Float.compare(prevStackScrollP, mStackScrollP) != 0;
     }
 
     /** Bounds the current scroll if necessary */
@@ -140,15 +128,10 @@ public class TaskStackViewScroller {
 
     /** Animates the stack scroll */
     void animateScroll(float curScroll, float newScroll, final Runnable postRunnable) {
-        // Finish any current scrolling animations
-        if (mScrollAnimator != null && mScrollAnimator.isRunning()) {
-            setStackScroll(mFinalAnimatedScroll);
-            mScroller.startScroll(0, progressToScrollRange(mFinalAnimatedScroll), 0, 0, 0);
-        }
+        // Abort any current animations
         stopScroller();
         stopBoundScrollAnimation();
 
-        mFinalAnimatedScroll = newScroll;
         mScrollAnimator = ObjectAnimator.ofFloat(this, "stackScroll", curScroll, newScroll);
         mScrollAnimator.setDuration(mConfig.taskStackScrollDuration);
         mScrollAnimator.setInterpolator(mConfig.linearOutSlowInInterpolator);
@@ -172,7 +155,10 @@ public class TaskStackViewScroller {
 
     /** Aborts any current stack scrolls */
     void stopBoundScrollAnimation() {
-        Utilities.cancelAnimationWithoutCallbacks(mScrollAnimator);
+        if (mScrollAnimator != null) {
+            mScrollAnimator.removeAllListeners();
+            mScrollAnimator.cancel();
+        }
     }
 
     /**** OverScroller ****/

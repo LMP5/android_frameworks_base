@@ -75,12 +75,12 @@ public:
     // and will delete them after they are run
     ANDROID_API void queue(RenderTask* task);
     ANDROID_API void queueAtFront(RenderTask* task);
-    void queueAt(RenderTask* task, nsecs_t runAtNs);
+    void queueDelayed(RenderTask* task, int delayMs);
     void remove(RenderTask* task);
 
     // Mimics android.view.Choreographer
     void postFrameCallback(IFrameCallback* callback);
-    bool removeFrameCallback(IFrameCallback* callback);
+    void removeFrameCallback(IFrameCallback* callback);
     // If the callback is currently registered, it will be pushed back until
     // the next vsync. If it is not currently registered this does nothing.
     void pushBackFrameCallback(IFrameCallback* callback);
@@ -103,7 +103,7 @@ private:
     void initThreadLocals();
     void initializeDisplayEventReceiver();
     static int displayEventReceiverCallback(int fd, int events, void* data);
-    void drainDisplayEventQueue();
+    void drainDisplayEventQueue(bool skipCallbacks = false);
     void dispatchFrameCallbacks();
     void requestVsync();
 

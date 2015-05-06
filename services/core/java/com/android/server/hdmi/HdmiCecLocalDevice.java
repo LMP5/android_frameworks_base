@@ -34,6 +34,7 @@ import com.android.server.hdmi.HdmiAnnotations.ServiceThreadOnly;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -124,7 +125,7 @@ abstract class HdmiCecLocalDevice {
 
     // A collection of FeatureAction.
     // Note that access to this collection should happen in service thread.
-    private final ArrayList<HdmiCecFeatureAction> mActions = new ArrayList<>();
+    private final LinkedList<HdmiCecFeatureAction> mActions = new LinkedList<>();
 
     private final Handler mHandler = new Handler () {
         @Override
@@ -189,25 +190,6 @@ abstract class HdmiCecLocalDevice {
      * Set the preferred logical address to system properties.
      */
     protected abstract void setPreferredAddress(int addr);
-
-    /**
-     * Returns true if the TV input associated with the CEC device is ready
-     * to accept further processing such as input switching. This is used
-     * to buffer certain CEC commands and process it later if the input is not
-     * ready yet. For other types of local devices(non-TV), this method returns
-     * true by default to let the commands be processed right away.
-     */
-    protected boolean isInputReady(int deviceId) {
-        return true;
-    }
-
-    /**
-     * Returns true if the local device allows the system to be put to standby.
-     * The default implementation returns true.
-     */
-    protected boolean canGoToStandby() {
-        return true;
-    }
 
     /**
      * Dispatch incoming message.
@@ -308,14 +290,12 @@ abstract class HdmiCecLocalDevice {
     @ServiceThreadOnly
     private boolean dispatchMessageToAction(HdmiCecMessage message) {
         assertRunOnServiceThread();
-        boolean processed = false;
-        // Use copied action list in that processCommand may remove itself.
-        for (HdmiCecFeatureAction action : new ArrayList<>(mActions)) {
-            // Iterates all actions to check whether incoming message is consumed.
-            boolean result = action.processCommand(message);
-            processed = processed || result;
+        for (HdmiCecFeatureAction action : mActions) {
+            if (action.processCommand(message)) {
+                return true;
+            }
         }
-        return processed;
+        return false;
     }
 
     @ServiceThreadOnly
@@ -445,7 +425,9 @@ abstract class HdmiCecLocalDevice {
 
         final long downTime = SystemClock.uptimeMillis();
         final byte[] params = message.getParams();
-        final int keycode = HdmiCecKeycode.cecKeycodeAndParamsToAndroidKey(params);
+        // Note that we don't support parameterized keycode now.
+        // TODO: translate parameterized keycode as well.
+        final int keycode = HdmiCecKeycode.cecKeyToAndroidKey(params[0]);
         int keyRepeatCount = 0;
         if (mLastKeycode != HdmiCecKeycode.UNSUPPORTED_KEYCODE) {
             if (keycode == mLastKeycode) {
@@ -535,8 +517,8 @@ abstract class HdmiCecLocalDevice {
     }
 
     protected boolean handleVendorCommand(HdmiCecMessage message) {
-        if (!mService.invokeVendorCommandListenersOnReceived(mDeviceType, message.getSource(),
-                message.getDestination(), message.getParams(), false)) {
+        if (!mService.invokeVendorCommandListeners(mDeviceType, message.getSource(),
+                message.getParams(), false)) {
             // Vendor command listener may not have been registered yet. Respond with
             // <Feature Abort> [NOT_IN_CORRECT_MODE] so that the sender can try again later.
             mService.maySendFeatureAbortCommand(message, Constants.ABORT_NOT_IN_CORRECT_MODE);
@@ -548,8 +530,8 @@ abstract class HdmiCecLocalDevice {
         byte[] params = message.getParams();
         int vendorId = HdmiUtils.threeBytesToInt(params);
         if (vendorId == mService.getVendorId()) {
-            if (!mService.invokeVendorCommandListenersOnReceived(mDeviceType, message.getSource(),
-                    message.getDestination(), params, true)) {
+            if (!mService.invokeVendorCommandListeners(mDeviceType, message.getSource(), params,
+                    true)) {
                 mService.maySendFeatureAbortCommand(message, Constants.ABORT_NOT_IN_CORRECT_MODE);
             }
         } else if (message.getDestination() != Constants.ADDR_BROADCAST &&

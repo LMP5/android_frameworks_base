@@ -46,11 +46,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -69,7 +66,7 @@ public class AssetAtlasService extends IAssetAtlas.Stub {
      */
     public static final String ASSET_ATLAS_SERVICE = "assetatlas";
 
-    private static final String LOG_TAG = "AssetAtlas";
+    private static final String LOG_TAG = "Atlas";
 
     // Turns debug logs on/off. Debug logs are kept to a minimum and should
     // remain on to diagnose issues
@@ -134,7 +131,7 @@ public class AssetAtlasService extends IAssetAtlas.Stub {
         mContext = context;
         mVersionName = queryVersionName(context);
 
-        Collection<Bitmap> bitmaps = new HashSet<Bitmap>(300);
+        ArrayList<Bitmap> bitmaps = new ArrayList<Bitmap>(300);
         int totalPixelCount = 0;
 
         // We only care about drawables that hold bitmaps
@@ -143,18 +140,16 @@ public class AssetAtlasService extends IAssetAtlas.Stub {
 
         final int count = drawables.size();
         for (int i = 0; i < count; i++) {
-            try {
-                totalPixelCount += drawables.valueAt(i).addAtlasableBitmaps(bitmaps);
-            } catch (Throwable t) {
-                Log.e("AssetAtlas", "Failed to fetch preloaded drawable state", t);
-                throw t;
+            final Bitmap bitmap = drawables.valueAt(i).getBitmap();
+            if (bitmap != null && bitmap.getConfig() == Bitmap.Config.ARGB_8888) {
+                bitmaps.add(bitmap);
+                totalPixelCount += bitmap.getWidth() * bitmap.getHeight();
             }
         }
 
-        ArrayList<Bitmap> sortedBitmaps = new ArrayList<Bitmap>(bitmaps);
         // Our algorithms perform better when the bitmaps are first sorted
         // The comparator will sort the bitmap by width first, then by height
-        Collections.sort(sortedBitmaps, new Comparator<Bitmap>() {
+        Collections.sort(bitmaps, new Comparator<Bitmap>() {
             @Override
             public int compare(Bitmap b1, Bitmap b2) {
                 if (b1.getWidth() == b2.getWidth()) {
@@ -165,7 +160,7 @@ public class AssetAtlasService extends IAssetAtlas.Stub {
         });
 
         // Kick off the packing work on a worker thread
-        new Thread(new Renderer(sortedBitmaps, totalPixelCount)).start();
+        new Thread(new Renderer(bitmaps, totalPixelCount)).start();
     }
 
     /**

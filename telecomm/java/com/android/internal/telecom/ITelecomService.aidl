@@ -18,7 +18,6 @@ package com.android.internal.telecom;
 
 import android.content.ComponentName;
 import android.telecom.PhoneAccountHandle;
-import android.net.Uri;
 import android.os.Bundle;
 import android.telecom.PhoneAccount;
 
@@ -116,21 +115,6 @@ interface ITelecomService {
     void clearAccounts(String packageName);
 
     /**
-     * @see TelecomServiceImpl#isVoiceMailNumber
-     */
-    boolean isVoiceMailNumber(in PhoneAccountHandle accountHandle, String number);
-
-     /**
-     * @see TelecomServiceImpl#getLine1Number
-     */
-    String getLine1Number(in PhoneAccountHandle accountHandle);
-
-    /**
-     * @see TelecomServiceImpl#hasVoiceMailNumber
-     */
-    boolean hasVoiceMailNumber(in PhoneAccountHandle accountHandle);
-
-    /**
      * @see TelecomServiceImpl#getDefaultPhoneApp
      */
     ComponentName getDefaultPhoneApp();
@@ -178,16 +162,6 @@ interface ITelecomService {
      * @see TelecomServiceImpl#handleMmi
      */
     boolean handlePinMmi(String dialString);
-
-    /**
-     * @see TelecomServiceImpl#handleMmi
-     */
-    boolean handlePinMmiForPhoneAccount(in PhoneAccountHandle accountHandle, String dialString);
-
-    /**
-     * @see TelecomServiceImpl#getAdnUriForPhoneAccount
-     */
-    Uri getAdnUriForPhoneAccount(in PhoneAccountHandle accountHandle);
 
     /**
      * @see TelecomServiceImpl#isTtySupported

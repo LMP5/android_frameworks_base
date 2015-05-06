@@ -36,10 +36,7 @@ public class BluetoothUtil {
         if (profile == BluetoothProfile.HEADSET) return "HEADSET";
         if (profile == BluetoothProfile.A2DP) return "A2DP";
         if (profile == BluetoothProfile.AVRCP_CONTROLLER) return "AVRCP_CONTROLLER";
-        if (profile == BluetoothProfile.PAN) return "PAN";
-        if (profile == BluetoothProfile.INPUT_DEVICE) return "INPUT_DEVICE";
-        if (profile == BluetoothProfile.MAP) return "MAP";
-        return "UNKNOWN(" + profile + ")";
+        return "UNKNOWN";
     }
 
     public static String profileStateToString(int state) {
@@ -108,11 +105,6 @@ public class BluetoothUtil {
         if (BluetoothUuid.MAS.equals(uuid)) return BluetoothProfile.MAP;
 
         if (BluetoothUuid.AvrcpController.equals(uuid)) return BluetoothProfile.AVRCP_CONTROLLER;
-
-        if (BluetoothUuid.Hid.equals(uuid)) return BluetoothProfile.INPUT_DEVICE;
-        if (BluetoothUuid.Hogp.equals(uuid)) return BluetoothProfile.INPUT_DEVICE;
-
-        if (BluetoothUuid.NAP.equals(uuid)) return BluetoothProfile.PAN;
 
         return 0;
     }

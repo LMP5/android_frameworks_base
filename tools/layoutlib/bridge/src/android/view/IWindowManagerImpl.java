@@ -228,11 +228,6 @@ public class IWindowManagerImpl implements IWindowManager {
     }
 
     @Override
-    public void overridePendingAppTransitionInPlace(String packageName, int anim) {
-        // TODO Auto-generated method stub
-    }
-
-    @Override
     public void pauseKeyDispatching(IBinder arg0) throws RemoteException {
         // TODO Auto-generated method stub
 

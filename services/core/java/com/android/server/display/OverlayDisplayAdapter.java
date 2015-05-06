@@ -61,9 +61,6 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
     private static final Pattern SETTING_PATTERN =
             Pattern.compile("(\\d+)x(\\d+)/(\\d+)(,[a-z]+)*");
 
-    // Unique id prefix for overlay displays.
-    private static final String UNIQUE_ID_PREFIX = "overlay:";
-
     private final Handler mUiHandler;
     private final ArrayList<OverlayDisplayHandle> mOverlays =
             new ArrayList<OverlayDisplayHandle>();
@@ -163,7 +160,7 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
                                 + ", densityDpi=" + densityDpi + ", secure=" + secure);
 
                         mOverlays.add(new OverlayDisplayHandle(name,
-                                width, height, densityDpi, gravity, secure, number));
+                                width, height, densityDpi, gravity, secure));
                         continue;
                     }
                 } catch (NumberFormatException ex) {
@@ -206,8 +203,8 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
         public OverlayDisplayDevice(IBinder displayToken, String name,
                 int width, int height, float refreshRate, long presentationDeadlineNanos,
                 int densityDpi, boolean secure, int state,
-                SurfaceTexture surfaceTexture, int number) {
-            super(OverlayDisplayAdapter.this, displayToken, UNIQUE_ID_PREFIX + number);
+                SurfaceTexture surfaceTexture) {
+            super(OverlayDisplayAdapter.this, displayToken);
             mName = name;
             mWidth = width;
             mHeight = height;
@@ -248,11 +245,9 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
             if (mInfo == null) {
                 mInfo = new DisplayDeviceInfo();
                 mInfo.name = mName;
-                mInfo.uniqueId = getUniqueId();
                 mInfo.width = mWidth;
                 mInfo.height = mHeight;
                 mInfo.refreshRate = mRefreshRate;
-                mInfo.supportedRefreshRates = new float[] { mRefreshRate };
                 mInfo.densityDpi = mDensityDpi;
                 mInfo.xDpi = mDensityDpi;
                 mInfo.yDpi = mDensityDpi;
@@ -283,20 +278,18 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
         private final int mDensityDpi;
         private final int mGravity;
         private final boolean mSecure;
-        private final int mNumber;
 
         private OverlayDisplayWindow mWindow;
         private OverlayDisplayDevice mDevice;
 
-        public OverlayDisplayHandle(String name, int width,
-                int height, int densityDpi, int gravity, boolean secure, int number) {
+        public OverlayDisplayHandle(String name,
+                int width, int height, int densityDpi, int gravity, boolean secure) {
             mName = name;
             mWidth = width;
             mHeight = height;
             mDensityDpi = densityDpi;
             mGravity = gravity;
             mSecure = secure;
-            mNumber = number;
 
             mUiHandler.post(mShowRunnable);
         }
@@ -314,7 +307,7 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
                 IBinder displayToken = SurfaceControl.createDisplay(mName, mSecure);
                 mDevice = new OverlayDisplayDevice(displayToken, mName,
                         mWidth, mHeight, refreshRate, presentationDeadlineNanos,
-                        mDensityDpi, mSecure, state, surfaceTexture, mNumber);
+                        mDensityDpi, mSecure, state, surfaceTexture);
 
                 sendDisplayDeviceEventLocked(mDevice, DISPLAY_DEVICE_EVENT_ADDED);
             }
@@ -349,7 +342,6 @@ final class OverlayDisplayAdapter extends DisplayAdapter {
             pw.println("    mDensityDpi=" + mDensityDpi);
             pw.println("    mGravity=" + mGravity);
             pw.println("    mSecure=" + mSecure);
-            pw.println("    mNumber=" + mNumber);
 
             // Try to dump the window state.
             if (mWindow != null) {

@@ -1156,10 +1156,9 @@ bail:
 ssize_t AaptAssets::slurpFullTree(Bundle* bundle, const String8& srcDir,
                                     const AaptGroupEntry& kind,
                                     const String8& resType,
-                                    sp<FilePathStore>& fullResPaths,
-                                    const bool overwrite)
+                                    sp<FilePathStore>& fullResPaths)
 {
-    ssize_t res = AaptDir::slurpFullTree(bundle, srcDir, kind, resType, fullResPaths, overwrite);
+    ssize_t res = AaptDir::slurpFullTree(bundle, srcDir, kind, resType, fullResPaths);
     if (res > 0) {
         mGroupEntries.add(kind);
     }

@@ -27,7 +27,7 @@
 #include "SkPath.h"
 #include "SkPathOps.h"
 
-#include <ResourceCache.h>
+#include <Caches.h>
 #include <vector>
 #include <map>
 
@@ -39,8 +39,8 @@ public:
     static void finalizer(JNIEnv* env, jobject clazz, jlong objHandle) {
         SkPath* obj = reinterpret_cast<SkPath*>(objHandle);
 #ifdef USE_OPENGL_RENDERER
-        if (android::uirenderer::ResourceCache::hasInstance()) {
-            android::uirenderer::ResourceCache::getInstance().destructor(obj);
+        if (android::uirenderer::Caches::hasInstance()) {
+            android::uirenderer::Caches::getInstance().resourceCache.destructor(obj);
             return;
         }
 #endif

@@ -62,12 +62,12 @@ interface ILocationManager
     boolean sendNiResponse(int notifId, int userResponse);
 
     boolean addGpsMeasurementsListener(in IGpsMeasurementsListener listener, in String packageName);
-    void removeGpsMeasurementsListener(in IGpsMeasurementsListener listener);
+    boolean removeGpsMeasurementsListener(in IGpsMeasurementsListener listener);
 
     boolean addGpsNavigationMessageListener(
             in IGpsNavigationMessageListener listener,
             in String packageName);
-    void removeGpsNavigationMessageListener(in IGpsNavigationMessageListener listener);
+    boolean removeGpsNavigationMessageListener(in IGpsNavigationMessageListener listener);
 
     // --- deprecated ---
     List<String> getAllProviders();

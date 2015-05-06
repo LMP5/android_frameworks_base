@@ -32,7 +32,7 @@ import com.android.internal.view.animation.NativeInterpolatorFactoryHelper;
  * then comes back.
  */
 @HasNativeInterpolator
-public class OvershootInterpolator extends BaseInterpolator implements NativeInterpolatorFactory {
+public class OvershootInterpolator implements Interpolator, NativeInterpolatorFactory {
     private final float mTension;
 
     public OvershootInterpolator() {
@@ -61,8 +61,9 @@ public class OvershootInterpolator extends BaseInterpolator implements NativeInt
             a = res.obtainAttributes(attrs, R.styleable.OvershootInterpolator);
         }
 
-        mTension = a.getFloat(R.styleable.OvershootInterpolator_tension, 2.0f);
-        setChangingConfiguration(a.getChangingConfigurations());
+        mTension =
+                a.getFloat(R.styleable.OvershootInterpolator_tension, 2.0f);
+
         a.recycle();
     }
 

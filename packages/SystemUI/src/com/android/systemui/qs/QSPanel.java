@@ -26,7 +26,6 @@ import android.content.res.Resources;
 import android.graphics.Point;
 import android.os.Handler;
 import android.os.Message;
-import android.os.UserHandle;
 import android.provider.Settings;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -69,11 +68,9 @@ public class QSPanel extends ViewGroup {
     private int mPanelPaddingBottom;
     private int mDualTileUnderlap;
     private int mBrightnessPaddingTop;
-    private int mGridHeight;
     private int mTranslationTop;
     private boolean mExpanded;
     private boolean mListening;
-    private boolean mClosingDetail;
 
     private Record mDetailRecord;
     private Callback mCallback;
@@ -240,9 +237,9 @@ public class QSPanel extends ViewGroup {
         }
     }
 
-    public void refreshAllTiles() {
-        mUseMainTiles = Settings.Secure.getIntForUser(getContext().getContentResolver(),
-                Settings.Secure.QS_USE_MAIN_TILES, 1, UserHandle.myUserId()) == 1;
+    private void refreshAllTiles() {
+        mUseMainTiles = Settings.Secure.getInt(getContext().getContentResolver(),
+                Settings.Secure.QS_USE_MAIN_TILES, 1) == 1;
         for (int i = 0; i < mRecords.size(); i++) {
             TileRecord r = mRecords.get(i);
             r.tileView.setDual(mUseMainTiles && i < 2);
@@ -268,15 +265,6 @@ public class QSPanel extends ViewGroup {
     private void handleSetTileVisibility(View v, int visibility) {
         if (visibility == v.getVisibility()) return;
         v.setVisibility(visibility);
-    }
-
-    private void setTileEnabled(View v, boolean enabled) {
-        mHandler.obtainMessage(H.SET_TILE_ENABLED, enabled ? 1 : 0, 0, v).sendToTarget();
-    }
-
-    private void handleSetTileEnabled(View v, boolean enabled) {
-        if (enabled == v.isEnabled()) return;
-        v.setEnabled(enabled);
     }
 
     public void setTiles(Collection<QSTile<?>> tiles) {
@@ -308,7 +296,6 @@ public class QSPanel extends ViewGroup {
                     visibility = INVISIBLE;
                 }
                 setTileVisibility(r.tileView, visibility);
-                setTileEnabled(r.tileView, state.enabled);
                 r.tileView.onStateChanged(state);
             }
             @Override
@@ -347,14 +334,14 @@ public class QSPanel extends ViewGroup {
                 r.tile.secondaryClick();
             }
         };
-        final View.OnLongClickListener longClick = new View.OnLongClickListener() {
+        final View.OnLongClickListener clickLong = new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 r.tile.longClick();
                 return true;
             }
         };
-        r.tileView.init(click, clickSecondary, longClick);
+        r.tileView.init(click, clickSecondary, clickLong);
         r.tile.setListening(mListening);
         callback.onStateChanged(r.tile.getState());
         r.tile.refreshState();
@@ -369,14 +356,6 @@ public class QSPanel extends ViewGroup {
 
     public void closeDetail() {
         showDetail(false, mDetailRecord);
-    }
-
-    public boolean isClosingDetail() {
-        return mClosingDetail;
-    }
-
-    public int getGridHeight() {
-        return mGridHeight;
     }
 
     private void handleShowDetail(Record r, boolean show) {
@@ -423,7 +402,6 @@ public class QSPanel extends ViewGroup {
             setDetailRecord(r);
             listener = mHideGridContentWhenDone;
         } else {
-            mClosingDetail = true;
             setGridContentVisibility(true);
             listener = mTeardownDetailWhenDone;
             fireScanStateChanged(false);
@@ -498,7 +476,6 @@ public class QSPanel extends ViewGroup {
                 mDetail.measure(exactly(width), exactly(detailMinHeight));
             }
         }
-        mGridHeight = h;
         setMeasuredDimension(width, Math.max(h, mDetail.getMeasuredHeight()));
     }
 
@@ -594,15 +571,12 @@ public class QSPanel extends ViewGroup {
     private class H extends Handler {
         private static final int SHOW_DETAIL = 1;
         private static final int SET_TILE_VISIBILITY = 2;
-        private static final int SET_TILE_ENABLED = 3;
         @Override
         public void handleMessage(Message msg) {
             if (msg.what == SHOW_DETAIL) {
                 handleShowDetail((Record)msg.obj, msg.arg1 != 0);
             } else if (msg.what == SET_TILE_VISIBILITY) {
                 handleSetTileVisibility((View)msg.obj, msg.arg1);
-            } else if (msg.what == SET_TILE_ENABLED) {
-                handleSetTileEnabled((View)msg.obj, msg.arg1 == 1);
             }
         }
     }
@@ -624,7 +598,6 @@ public class QSPanel extends ViewGroup {
         public void onAnimationEnd(Animator animation) {
             mDetailContent.removeAllViews();
             setDetailRecord(null);
-            mClosingDetail = false;
             if (mDetailCallback != null) {
                 mDetailCallback.onDetailChanged(false);
             }
@@ -640,10 +613,7 @@ public class QSPanel extends ViewGroup {
 
         @Override
         public void onAnimationEnd(Animator animation) {
-            // Only hide content if still in detail state.
-            if (mDetailRecord != null) {
-                setGridContentVisibility(false);
-            }
+            setGridContentVisibility(false);
         }
     };
 

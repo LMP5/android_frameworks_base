@@ -466,8 +466,6 @@ public class AlertDialog extends Dialog implements DialogInterface {
         
         /**
          * Set the resource id of the {@link Drawable} to be used in the title.
-         * <p>
-         * Takes precedence over values set using {@link #setIcon(Drawable)}.
          *
          * @return This Builder object to allow for chaining of calls to set methods
          */
@@ -487,11 +485,7 @@ public class AlertDialog extends Dialog implements DialogInterface {
         }
 
         /**
-         * Set an icon as supplied by a theme attribute. e.g.
-         * {@link android.R.attr#alertDialogIcon}.
-         * <p>
-         * Takes precedence over values set using {@link #setIcon(int)} or
-         * {@link #setIcon(Drawable)}.
+         * Set an icon as supplied by a theme attribute. e.g. android.R.attr.alertDialogIcon
          *
          * @param attrId ID of a theme attribute that points to a drawable resource.
          */

@@ -102,8 +102,9 @@ public class WallpaperBackupHelper extends FileBackupHelperBase implements Backu
         final Display d = wm.getDefaultDisplay();
         final Point size = new Point();
         d.getSize(size);
-        mDesiredMinWidth = Math.min(size.x, size.y);
+        mDesiredMinWidth = size.x;
         mDesiredMinHeight = (double) wpm.getDesiredMinimumHeight();
+
         if (mDesiredMinHeight <= 0) {
             mDesiredMinHeight = size.y;
         }
@@ -148,13 +149,9 @@ public class WallpaperBackupHelper extends FileBackupHelperBase implements Backu
                         // We accept any wallpaper that is at least as wide as our preference
                         // (i.e. wide enough to fill the screen), and is within a comfortable
                         // factor of the target height, to avoid significant clipping/scaling/
-                        // letterboxing.  At this point we know that mDesiredMinWidth is the
-                        // smallest dimension, regardless of current orientation, so we can
-                        // safely require that the candidate's width and height both exceed
-                        // that hard minimum.
+                        // letterboxing.
                         final double heightRatio = mDesiredMinHeight / options.outHeight;
                         if (options.outWidth < mDesiredMinWidth
-                                || options.outHeight < mDesiredMinWidth
                                 || heightRatio >= MAX_HEIGHT_RATIO
                                 || heightRatio <= MIN_HEIGHT_RATIO) {
                             // Not wide enough for the screen, or too short/tall to be a good fit

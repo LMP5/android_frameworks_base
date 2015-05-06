@@ -31,10 +31,8 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
     private final Interpolator mInterpolator;
     private final float mStartTranslation;
     private final AppearAnimationProperties mProperties = new AppearAnimationProperties();
-    protected final float mDelayScale;
+    private final float mDelayScale;
     private final long mDuration;
-    protected boolean mScaleTranslationWithRow;
-    protected boolean mAppearing;
 
     public AppearAnimationUtils(Context ctx) {
         this(ctx, DEFAULT_APPEAR_DURATION,
@@ -49,25 +47,23 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
                 R.dimen.appear_y_translation_start) * translationScaleFactor;
         mDelayScale = delayScaleFactor;
         mDuration = duration;
-        mScaleTranslationWithRow = false;
-        mAppearing = true;
     }
 
-    public void startAnimation(View[][] objects, final Runnable finishListener) {
-        startAnimation(objects, finishListener, this);
+    public void startAppearAnimation(View[][] objects, final Runnable finishListener) {
+        startAppearAnimation(objects, finishListener, this);
     }
 
-    public void startAnimation(View[] objects, final Runnable finishListener) {
-        startAnimation(objects, finishListener, this);
+    public void startAppearAnimation(View[] objects, final Runnable finishListener) {
+        startAppearAnimation(objects, finishListener, this);
     }
 
-    public <T> void startAnimation(T[][] objects, final Runnable finishListener,
+    public <T> void startAppearAnimation(T[][] objects, final Runnable finishListener,
             AppearAnimationCreator<T> creator) {
         AppearAnimationProperties properties = getDelays(objects);
         startAnimations(properties, objects, finishListener, creator);
     }
 
-    public <T> void startAnimation(T[] objects, final Runnable finishListener,
+    public <T> void startAppearAnimation(T[] objects, final Runnable finishListener,
             AppearAnimationCreator<T> creator) {
         AppearAnimationProperties properties = getDelays(objects);
         startAnimations(properties, objects, finishListener, creator);
@@ -87,7 +83,7 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
                 endRunnable = finishListener;
             }
             creator.createAnimation(objects[row], delay, mDuration,
-                    mStartTranslation, true /* appearing */, mInterpolator, endRunnable);
+                    mStartTranslation, mInterpolator, endRunnable);
         }
     }
 
@@ -99,10 +95,6 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
         }
         for (int row = 0; row < properties.delays.length; row++) {
             long[] columns = properties.delays[row];
-            float translation = mScaleTranslationWithRow
-                    ? (float) (Math.pow((properties.delays.length - row), 2)
-                    / properties.delays.length * mStartTranslation)
-                    : mStartTranslation;
             for (int col = 0; col < columns.length; col++) {
                 long delay = columns[col];
                 Runnable endRunnable = null;
@@ -110,8 +102,7 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
                     endRunnable = finishListener;
                 }
                 creator.createAnimation(objects[row][col], delay, mDuration,
-                        mAppearing ? translation : -translation,
-                        mAppearing, mInterpolator, endRunnable);
+                        mStartTranslation, mInterpolator, endRunnable);
             }
         }
     }
@@ -155,7 +146,7 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
         return mProperties;
     }
 
-    protected long calculateDelay(int row, int col) {
+    private long calculateDelay(int row, int col) {
         return (long) ((row * 40 + col * (Math.pow(row, 0.4) + 0.4) * 20) * mDelayScale);
     }
 
@@ -168,14 +159,14 @@ public class AppearAnimationUtils implements AppearAnimationCreator<View> {
     }
 
     @Override
-    public void createAnimation(View view, long delay, long duration, float translationY,
-            boolean appearing, Interpolator interpolator, Runnable endRunnable) {
+    public void createAnimation(View view, long delay, long duration, float startTranslationY,
+            Interpolator interpolator, Runnable endRunnable) {
         if (view != null) {
-            view.setAlpha(appearing ? 0f : 1.0f);
-            view.setTranslationY(appearing ? translationY : 0);
+            view.setAlpha(0f);
+            view.setTranslationY(startTranslationY);
             view.animate()
-                    .alpha(appearing ? 1f : 0f)
-                    .translationY(appearing ? 0 : translationY)
+                    .alpha(1f)
+                    .translationY(0)
                     .setInterpolator(interpolator)
                     .setDuration(duration)
                     .setStartDelay(delay);

@@ -77,14 +77,18 @@ public:
     OpenGLRenderer& mRenderer;
     const int mReplayFlags;
 
-    // Allocator with the lifetime of a single frame. replay uses an Allocator owned by the struct,
-    // while defer shares the DeferredDisplayList's Allocator
-    // TODO: move this allocator to be owned by object with clear frame lifecycle
+    // Allocator with the lifetime of a single frame.
+    // replay uses an Allocator owned by the struct, while defer shares the DeferredDisplayList's Allocator
     LinearAllocator * const mAllocator;
 
     SkPath* allocPathForFrame() {
-        return mRenderer.allocPathForFrame();
+        mTempPaths.push_back();
+        return &mTempPaths.back();
     }
+
+private:
+    // Paths kept alive for the duration of the frame
+    std::vector<SkPath> mTempPaths;
 };
 
 class DeferStateStruct : public PlaybackStateStruct {
@@ -143,6 +147,7 @@ public:
     Vector<const SkPath*> paths;
     SortedVector<const SkPath*> sourcePaths;
     Vector<const SkRegion*> regions;
+    Vector<Layer*> layers;
     Vector<Functor*> functors;
 
     const Vector<Chunk>& getChunks() const {
@@ -152,7 +157,11 @@ public:
     size_t addChild(DrawRenderNodeOp* childOp);
     const Vector<DrawRenderNodeOp*>& children() { return mChildren; }
 
-    void ref(VirtualLightRefBase* prop) {
+    void refProperty(CanvasPropertyPrimitive* prop) {
+        mReferenceHolders.push(prop);
+    }
+
+    void refProperty(CanvasPropertyPaint* prop) {
         mReferenceHolders.push(prop);
     }
 

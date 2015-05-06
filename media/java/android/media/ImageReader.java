@@ -26,7 +26,6 @@ import android.view.Surface;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.NioUtils;
 
 /**
  * <p>The ImageReader class allows direct application access to image data
@@ -578,11 +577,7 @@ public class ImageReader implements AutoCloseable {
         @Override
         public int getWidth() {
             if (mIsImageValid) {
-                if (mWidth == -1) {
-                    mWidth = (getFormat() == ImageFormat.JPEG) ? ImageReader.this.getWidth() :
-                            nativeGetWidth();
-                }
-                return mWidth;
+                return ImageReader.this.mWidth;
             } else {
                 throw new IllegalStateException("Image is already released");
             }
@@ -591,11 +586,7 @@ public class ImageReader implements AutoCloseable {
         @Override
         public int getHeight() {
             if (mIsImageValid) {
-                if (mHeight == -1) {
-                    mHeight = (getFormat() == ImageFormat.JPEG) ? ImageReader.this.getHeight() :
-                            nativeGetHeight();
-                }
-                return mHeight;
+                return ImageReader.this.mHeight;
             } else {
                 throw new IllegalStateException("Image is already released");
             }
@@ -697,15 +688,6 @@ public class ImageReader implements AutoCloseable {
             }
 
             private void clearBuffer() {
-                // Need null check first, as the getBuffer() may not be called before an image
-                // is closed.
-                if (mBuffer == null) {
-                    return;
-                }
-
-                if (mBuffer.isDirect()) {
-                    NioUtils.freeDirectBuffer(mBuffer);
-                }
                 mBuffer = null;
             }
 
@@ -729,13 +711,9 @@ public class ImageReader implements AutoCloseable {
 
         private SurfacePlane[] mPlanes;
         private boolean mIsImageValid;
-        private int mHeight = -1;
-        private int mWidth = -1;
 
         private synchronized native ByteBuffer nativeImageGetBuffer(int idx, int readerFormat);
         private synchronized native SurfacePlane nativeCreatePlane(int idx, int readerFormat);
-        private synchronized native int nativeGetWidth();
-        private synchronized native int nativeGetHeight();
     }
 
     private synchronized native void nativeInit(Object weakSelf, int w, int h,

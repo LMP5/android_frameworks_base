@@ -3,12 +3,13 @@ package android.hardware.hdmi;
 import android.annotation.NonNull;
 import android.annotation.SystemApi;
 import android.hardware.hdmi.HdmiControlManager.VendorCommandListener;
+import android.hardware.hdmi.IHdmiVendorCommandListener;
 import android.os.RemoteException;
 import android.util.Log;
 
 /**
  * Parent for classes of various HDMI-CEC device type used to access
- * the HDMI control system service. Contains methods and data used in common.
+ * {@link HdmiControlService}. Contains methods and data used in common.
  *
  * @hide
  */
@@ -16,13 +17,11 @@ import android.util.Log;
 public abstract class HdmiClient {
     private static final String TAG = "HdmiClient";
 
-    /* package */ final IHdmiControlService mService;
+    protected final IHdmiControlService mService;
 
-    private IHdmiVendorCommandListener mIHdmiVendorCommandListener;
+    protected abstract int getDeviceType();
 
-    /* package */ abstract int getDeviceType();
-
-    /* package */ HdmiClient(IHdmiControlService service) {
+    public HdmiClient(IHdmiControlService service) {
         mService = service;
     }
 
@@ -42,7 +41,7 @@ public abstract class HdmiClient {
     }
 
     /**
-     * Sends a key event to other logical device.
+     * Send a key event to other logical device.
      *
      * @param keyCode key code to send. Defined in {@link android.view.KeyEvent}.
      * @param isPressed true if this is key press event
@@ -56,7 +55,7 @@ public abstract class HdmiClient {
     }
 
     /**
-     * Sends vendor-specific command.
+     * Send vendor-specific command.
      *
      * @param targetAddress address of the target device
      * @param params vendor-specific parameter. For &lt;Vendor Command With ID&gt; do not
@@ -73,23 +72,18 @@ public abstract class HdmiClient {
     }
 
     /**
-     * Sets a listener used to receive incoming vendor-specific command.
+     * Add a listener used to receive incoming vendor-specific command.
      *
      * @param listener listener object
      */
-    public void setVendorCommandListener(@NonNull VendorCommandListener listener) {
+    public void addVendorCommandListener(@NonNull VendorCommandListener listener) {
         if (listener == null) {
             throw new IllegalArgumentException("listener cannot be null");
         }
-        if (mIHdmiVendorCommandListener != null) {
-            throw new IllegalStateException("listener was already set");
-        }
         try {
-            IHdmiVendorCommandListener wrappedListener = getListenerWrapper(listener);
-            mService.addVendorCommandListener(wrappedListener, getDeviceType());
-            mIHdmiVendorCommandListener = wrappedListener;
+            mService.addVendorCommandListener(getListenerWrapper(listener), getDeviceType());
         } catch (RemoteException e) {
-            Log.e(TAG, "failed to set vendor command listener: ", e);
+            Log.e(TAG, "failed to add vendor command listener: ", e);
         }
     }
 
@@ -97,13 +91,8 @@ public abstract class HdmiClient {
             final VendorCommandListener listener) {
         return new IHdmiVendorCommandListener.Stub() {
             @Override
-            public void onReceived(int srcAddress, int destAddress, byte[] params,
-                    boolean hasVendorId) {
-                listener.onReceived(srcAddress, destAddress, params, hasVendorId);
-            }
-            @Override
-            public void onControlStateChanged(boolean enabled, int reason) {
-                listener.onControlStateChanged(enabled, reason);
+            public void onReceived(int srcAddress, byte[] params, boolean hasVendorId) {
+                listener.onReceived(srcAddress, params, hasVendorId);
             }
         };
     }

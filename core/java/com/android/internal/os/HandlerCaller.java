@@ -49,10 +49,6 @@ public class HandlerCaller {
         mCallback = callback;
     }
 
-    public Handler getHandler() {
-        return mH;
-    }
-
     public void executeOrSendMessage(Message msg) {
         // If we are calling this from the main thread, then we can call
         // right through.  Otherwise, we need to send the message to the

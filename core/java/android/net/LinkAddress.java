@@ -21,14 +21,12 @@ import android.os.Parcelable;
 import android.util.Pair;
 
 import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InterfaceAddress;
 import java.net.UnknownHostException;
 
 import static android.system.OsConstants.IFA_F_DADFAILED;
 import static android.system.OsConstants.IFA_F_DEPRECATED;
-import static android.system.OsConstants.IFA_F_OPTIMISTIC;
 import static android.system.OsConstants.IFA_F_TENTATIVE;
 import static android.system.OsConstants.RT_SCOPE_HOST;
 import static android.system.OsConstants.RT_SCOPE_LINK;
@@ -92,20 +90,6 @@ public class LinkAddress implements Parcelable {
         }
 
         return RT_SCOPE_UNIVERSE;
-    }
-
-    /**
-     * Utility function to check if |address| is a Unique Local IPv6 Unicast Address
-     * (a.k.a. "ULA"; RFC 4193).
-     *
-     * Per RFC 4193 section 8, fc00::/7 identifies these addresses.
-     */
-    private boolean isIPv6ULA() {
-        if (address != null && address instanceof Inet6Address) {
-            byte[] bytes = address.getAddress();
-            return ((bytes[0] & (byte)0xfc) == (byte)0xfc);
-        }
-        return false;
     }
 
     /**
@@ -284,16 +268,8 @@ public class LinkAddress implements Parcelable {
      * @hide
      */
     public boolean isGlobalPreferred() {
-        /**
-         * Note that addresses flagged as IFA_F_OPTIMISTIC are
-         * simultaneously flagged as IFA_F_TENTATIVE (when the tentative
-         * state has cleared either DAD has succeeded or failed, and both
-         * flags are cleared regardless).
-         */
         return (scope == RT_SCOPE_UNIVERSE &&
-                !isIPv6ULA() &&
-                (flags & (IFA_F_DADFAILED | IFA_F_DEPRECATED)) == 0L &&
-                ((flags & IFA_F_TENTATIVE) == 0L || (flags & IFA_F_OPTIMISTIC) != 0L));
+                (flags & (IFA_F_DADFAILED | IFA_F_DEPRECATED | IFA_F_TENTATIVE)) == 0L);
     }
 
     /**

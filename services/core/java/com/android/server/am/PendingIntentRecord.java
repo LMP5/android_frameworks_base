@@ -269,13 +269,11 @@ final class PendingIntentRecord extends IIntentSender.Stub {
                         try {
                             // If a completion callback has been requested, require
                             // that the broadcast be delivered synchronously
-                            int sent = owner.broadcastIntentInPackage(key.packageName, uid,
+                            owner.broadcastIntentInPackage(key.packageName, uid,
                                     finalIntent, resolvedType,
                                     finishedReceiver, code, null, null,
                                 requiredPermission, (finishedReceiver != null), false, userId);
-                            if (sent == ActivityManager.BROADCAST_SUCCESS) {
-                                sendFinish = false;
-                            }
+                            sendFinish = false;
                         } catch (RuntimeException e) {
                             Slog.w(ActivityManagerService.TAG,
                                     "Unable to send startActivity intent", e);

@@ -59,7 +59,6 @@ interface IHdmiControlService {
     void setSystemAudioMute(boolean mute);
     void setInputChangeListener(IHdmiInputChangeListener listener);
     List<HdmiDeviceInfo> getInputDevices();
-    List<HdmiDeviceInfo> getDeviceList();
     void sendVendorCommand(int deviceType, int targetAddress, in byte[] params,
             boolean hasVendorId);
     void addVendorCommandListener(IHdmiVendorCommandListener listener, int deviceType);

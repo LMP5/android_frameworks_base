@@ -154,11 +154,10 @@ public class UserSwitcherController {
                         Bitmap picture = bitmaps.get(info.id);
                         if (picture == null) {
                             picture = mUserManager.getUserIcon(info.id);
-
-                            if (picture != null) {
-                                picture = BitmapHelper.createCircularClip(
-                                        picture, avatarSize, avatarSize);
-                            }
+                        }
+                        if (picture != null) {
+                            picture = BitmapHelper.createCircularClip(
+                                    picture, avatarSize, avatarSize);
                         }
                         int index = isCurrent ? 0 : records.size();
                         records.add(index, new UserRecord(info, picture, false /* isGuest */,
@@ -583,9 +582,4 @@ public class UserSwitcherController {
             }
         }
     }
-
-    public static boolean isUserSwitcherAvailable(UserManager um) {
-        return UserManager.supportsMultipleUsers() && um.isUserSwitcherEnabled();
-    }
-
 }

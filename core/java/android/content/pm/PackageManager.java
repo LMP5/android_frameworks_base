@@ -795,6 +795,7 @@ public abstract class PackageManager {
      * if the system failed to install the theme because aapt could not compile the app
      * @hide
      */
+    @SystemApi
     public static final int INSTALL_FAILED_THEME_AAPT_ERROR = -400;
 
     /**
@@ -805,6 +806,7 @@ public abstract class PackageManager {
      * apps.
      * @hide
      */
+    @SystemApi
     public static final int INSTALL_FAILED_THEME_IDMAP_ERROR = -401;
 
     /**
@@ -815,6 +817,7 @@ public abstract class PackageManager {
      * apps.
      * @hide
      */
+    @SystemApi
     public static final int INSTALL_FAILED_THEME_UNKNOWN_ERROR = -402;
 
     /**
@@ -3940,13 +3943,6 @@ public abstract class PackageManager {
     public abstract VerifierDeviceIdentity getVerifierDeviceIdentity();
 
     /**
-     * Returns true if the device is upgrading, such as first boot after OTA.
-     *
-     * @hide
-     */
-    public abstract boolean isUpgrade();
-
-    /**
      * Return interface that offers the ability to install, upgrade, and remove
      * applications on the device.
      */
@@ -3996,11 +3992,6 @@ public abstract class PackageManager {
      * @hide
      */
     public abstract Drawable loadItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo);
-
-    /**
-     * @hide
-     */
-    public abstract Drawable loadUnbadgedItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo);
 
     /** {@hide} */
     public abstract boolean isPackageAvailable(String packageName);

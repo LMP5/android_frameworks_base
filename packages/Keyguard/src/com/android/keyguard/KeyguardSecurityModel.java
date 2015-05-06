@@ -80,7 +80,7 @@ public class KeyguardSecurityModel {
         IccCardConstants.State simState = IccCardConstants.State.UNKNOWN;
         SecurityMode mode = SecurityMode.None;
         for (int i = 0; i < updateMonitor.getNumPhones(); i++) {
-            int subId = updateMonitor.getSubIdByPhoneId(i);
+            long subId = updateMonitor.getSubIdByPhoneId(i);
             simState = updateMonitor.getSimState(subId);
             if (simState == IccCardConstants.State.PIN_REQUIRED
                 || simState == IccCardConstants.State.PUK_REQUIRED) {
@@ -93,7 +93,7 @@ public class KeyguardSecurityModel {
         } else if (simState == IccCardConstants.State.PUK_REQUIRED
                 && mLockPatternUtils.isPukUnlockScreenEnable()) {
             mode = SecurityMode.SimPuk;
-        } else {
+        } else if (mLockPatternUtils.getActiveProfileLockMode() != Profile.LockMode.INSECURE) {
             final int security = mLockPatternUtils.getKeyguardStoredPasswordQuality();
             switch (security) {
                 case DevicePolicyManager.PASSWORD_QUALITY_NUMERIC:

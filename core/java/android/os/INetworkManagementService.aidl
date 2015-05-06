@@ -92,11 +92,6 @@ interface INetworkManagementService
     void enableIpv6(String iface);
 
     /**
-     * Enables or enables IPv6 ND offload.
-     */
-    void setInterfaceIpv6NdOffload(String iface, boolean enable);
-
-    /**
      * Retrieves the network routes currently configured on the specified
      * interface
      */
@@ -351,19 +346,19 @@ interface INetworkManagementService
     void removeVpnUidRanges(int netId, in UidRange[] ranges);
 
     /**
-     * Start the clatd (464xlat) service on the given interface.
+     * Start the clatd (464xlat) service
      */
     void startClatd(String interfaceName);
 
     /**
-     * Stop the clatd (464xlat) service on the given interface.
+     * Stop the clatd (464xlat) service
      */
-    void stopClatd(String interfaceName);
+    void stopClatd();
 
     /**
-     * Determine whether the clatd (464xlat) service has been started on the given interface.
+     * Determine whether the clatd (464xlat) service has been started
      */
-    boolean isClatdStarted(String interfaceName);
+    boolean isClatdStarted();
 
     /**
      * Start listening for mobile activity state changes.

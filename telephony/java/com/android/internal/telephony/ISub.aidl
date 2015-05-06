@@ -17,78 +17,56 @@
 package com.android.internal.telephony;
 
 import android.app.PendingIntent;
-import android.telephony.SubscriptionInfo;
-import com.android.internal.telephony.ISubscriptionListener;
+import android.telephony.SubInfoRecord;
 
 interface ISub {
     /**
-     * @return a list of all subscriptions in the database, this includes
-     * all subscriptions that have been seen.
+     * Get the SubInfoRecord according to an index
+     * @param subId The unique SubInfoRecord index in database
+     * @return SubInfoRecord, maybe null
      */
-    List<SubscriptionInfo> getAllSubInfoList();
+    SubInfoRecord getSubInfoForSubscriber(long subId);
 
     /**
-     * @return the count of all subscriptions in the database, this includes
-     * all subscriptions that have been seen.
+     * Get the SubInfoRecord according to an IccId
+     * @param iccId the IccId of SIM card
+     * @return SubInfoRecord, maybe null
+     */
+    List<SubInfoRecord> getSubInfoUsingIccId(String iccId);
+
+    /**
+     * Get the SubInfoRecord according to slotId
+     * @param slotId the slot which the SIM is inserted
+     * @return SubInfoRecord, maybe null
+     */
+    List<SubInfoRecord> getSubInfoUsingSlotId(int slotId);
+
+    /**
+     * Get all the SubInfoRecord(s) in subinfo database
+     * @return Array list of all SubInfoRecords in database, include thsoe that were inserted before
+     */
+    List<SubInfoRecord> getAllSubInfoList();
+
+    /**
+     * Get the SubInfoRecord(s) of the currently inserted SIM(s)
+     * @return Array list of currently inserted SubInfoRecord(s)
+     */
+    List<SubInfoRecord> getActiveSubInfoList();
+
+    /**
+     * Get the SUB count of all SUB(s) in subinfo database
+     * @return all SIM count in database, include what was inserted before
      */
     int getAllSubInfoCount();
 
     /**
-     * Get the active SubscriptionInfo with the subId key
-     * @param subId The unique SubscriptionInfo key in database
-     * @return SubscriptionInfo, maybe null if its not active
-     */
-    SubscriptionInfo getActiveSubscriptionInfo(int subId);
-
-    /**
-     * Get the active SubscriptionInfo associated with the iccId
-     * @param iccId the IccId of SIM card
-     * @return SubscriptionInfo, maybe null if its not active
-     */
-    SubscriptionInfo getActiveSubscriptionInfoForIccId(String iccId);
-
-    /**
-     * Get the active SubscriptionInfo associated with the slotIdx
-     * @param slotIdx the slot which the subscription is inserted
-     * @return SubscriptionInfo, maybe null if its not active
-     */
-    SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIdx);
-
-    /**
-     * Get the SubscriptionInfo(s) of the active subscriptions. The records will be sorted
-     * by {@link SubscriptionInfo#getSimSlotIndex} then by {@link SubscriptionInfo#getSubscriptionId}.
-     *
-     * @return Sorted list of the currently {@link SubscriptionInfo} records available on the device.
-     * <ul>
-     * <li>
-     * If null is returned the current state is unknown but if a {@link OnSubscriptionsChangedListener}
-     * has been registered {@link OnSubscriptionsChangedListener#onSubscriptionsChanged} will be
-     * invoked in the future.
-     * </li>
-     * <li>
-     * If the list is empty then there are no {@link SubscriptionInfo} records currently available.
-     * </li>
-     * <li>
-     * if the list is non-empty the list is sorted by {@link SubscriptionInfo#getSimSlotIndex}
-     * then by {@link SubscriptionInfo#getSubscriptionId}.
-     * </li>
-     * </ul>
-     */
-    List<SubscriptionInfo> getActiveSubscriptionInfoList();
-
-    /**
-     * Get the count of activated SUB(s)
-     * @return the number of active subscriptions
+     * Get the count of active SUB(s)
+     * @return active SIM count
      */
     int getActiveSubInfoCount();
 
     /**
-     * @return the maximum number of subscriptions this device will support at any one time.
-     */
-    int getActiveSubInfoCountMax();
-
-    /**
-     * Add a new SubscriptionInfo to subinfo database if needed
+     * Add a new SubInfoRecord to subinfo database if needed
      * @param iccId the IccId of the SIM card
      * @param slotId the slot which the SIM is inserted
      * @return the URL of the newly created row or the updated row
@@ -96,73 +74,83 @@ interface ISub {
     int addSubInfoRecord(String iccId, int slotId);
 
     /**
-     * Set SIM icon tint color by simInfo index
-     * @param tint the icon tint color of the SIM
-     * @param subId the unique SubscriptionInfo index in database
+     * Set SIM color by simInfo index
+     * @param color the color of the SIM
+     * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
      */
-    int setIconTint(int tint, int subId);
+    int setColor(int color, long subId);
 
     /**
      * Set display name by simInfo index
      * @param displayName the display name of SIM card
-     * @param subId the unique SubscriptionInfo index in database
+     * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
      */
-    int setDisplayName(String displayName, int subId);
+    int setDisplayName(String displayName, long subId);
 
     /**
      * Set display name by simInfo index with name source
      * @param displayName the display name of SIM card
-     * @param subId the unique SubscriptionInfo index in database
+     * @param subId the unique SubInfoRecord index in database
      * @param nameSource, 0: DEFAULT_SOURCE, 1: SIM_SOURCE, 2: USER_INPUT
      * @return the number of records updated
      */
-    int setDisplayNameUsingSrc(String displayName, int subId, long nameSource);
+    int setDisplayNameUsingSrc(String displayName, long subId, long nameSource);
 
     /**
      * Set phone number by subId
      * @param number the phone number of the SIM
-     * @param subId the unique SubscriptionInfo index in database
+     * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
      */
-    int setDisplayNumber(String number, int subId);
+    int setDisplayNumber(String number, long subId);
+
+    /**
+     * Set number display format. 0: none, 1: the first four digits, 2: the last four digits
+     * @param format the display format of phone number
+     * @param subId the unique SubInfoRecord index in database
+     * @return the number of records updated
+     */
+    int setDisplayNumberFormat(int format, long subId);
 
     /**
      * Set data roaming by simInfo index
      * @param roaming 0:Don't allow data when roaming, 1:Allow data when roaming
-     * @param subId the unique SubscriptionInfo index in database
+     * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
      */
-    int setDataRoaming(int roaming, int subId);
+    int setDataRoaming(int roaming, long subId);
 
-    int getSlotId(int subId);
+    int getSlotId(long subId);
 
-    int[] getSubId(int slotId);
+    long[] getSubId(int slotId);
 
-    int getDefaultSubId();
+    long getDefaultSubId();
 
     int clearSubInfo();
 
-    int getPhoneId(int subId);
+    int getPhoneId(long subId);
 
     /**
      * Get the default data subscription
      * @return Id of the data subscription
      */
-    int getDefaultDataSubId();
+    long getDefaultDataSubId();
 
-    void setDefaultDataSubId(int subId);
+    void setDefaultDataSubId(long subId);
 
-    int getDefaultVoiceSubId();
+    long getDefaultVoiceSubId();
 
-    void setDefaultVoiceSubId(int subId);
+    void setDefaultVoiceSubId(long subId);
 
-    int getDefaultSmsSubId();
+    long getDefaultSmsSubId();
 
-    void setDefaultSmsSubId(int subId);
+    void setDefaultSmsSubId(long subId);
 
     void clearDefaultsForInactiveSubIds();
+
+    long[] getActiveSubIdList();
 
     boolean isSMSPromptEnabled();
 
@@ -172,22 +160,13 @@ interface ISub {
 
     void setVoicePromptEnabled(boolean enabled);
 
-    void activateSubId(int subId);
+    void activateSubId(long subId);
 
-    void deactivateSubId(int subId);
+    void deactivateSubId(long subId);
 
-    int setSubState(int subId, int subStatus);
+    int setSubState(long subId, int subStatus);
 
-    int getSubState(int subId);
+    int getSubState(long subId);
 
-    int getOnDemandDataSubId();
- 
-    int[] getActiveSubIdList();
-
-    /**
-     * Get the SIM state for the subscriber
-     * @return SIM state as the ordinal of IccCardConstants.State
-     */
-    int getSimStateForSubscriber(int subId);
-
+    long getOnDemandDataSubId();
 }

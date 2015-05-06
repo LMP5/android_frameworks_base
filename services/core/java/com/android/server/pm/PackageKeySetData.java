@@ -16,9 +16,10 @@
 
 package com.android.server.pm;
 
-import android.util.ArrayMap;
-
 import com.android.internal.util.ArrayUtils;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class PackageKeySetData {
 
@@ -33,7 +34,7 @@ public class PackageKeySetData {
 
     private long[] mDefinedKeySets;
 
-    private final ArrayMap<String, Long> mKeySetAliases = new ArrayMap<String, Long>();
+    private final Map<String, Long> mKeySetAliases = new HashMap<String, Long>();
 
     PackageKeySetData() {
         mProperSigningKeySet = KEYSET_UNASSIGNED;
@@ -131,7 +132,7 @@ public class PackageKeySetData {
         return mDefinedKeySets;
     }
 
-    protected ArrayMap<String, Long> getAliases() {
+    protected Map<String, Long> getAliases() {
         return mKeySetAliases;
     }
 

@@ -143,18 +143,6 @@ public final class BatteryStatsService extends IBatteryStats.Stub
         }
     }
 
-    void noteProcessCrash(String name, int uid) {
-        synchronized (mStats) {
-            mStats.noteProcessCrashLocked(name, uid);
-        }
-    }
-
-    void noteProcessAnr(String name, int uid) {
-        synchronized (mStats) {
-            mStats.noteProcessAnrLocked(name, uid);
-        }
-    }
-
     void noteProcessState(String name, int uid, int state) {
         synchronized (mStats) {
             mStats.noteProcessStateLocked(name, uid, state);
@@ -358,13 +346,6 @@ public final class BatteryStatsService extends IBatteryStats.Stub
         enforceCallingPermission();
         synchronized (mStats) {
             mStats.noteInteractiveLocked(interactive);
-        }
-    }
-
-    public void noteConnectivityChanged(int type, String extra) {
-        enforceCallingPermission();
-        synchronized (mStats) {
-            mStats.noteConnectivityChangedLocked(type, extra);
         }
     }
 

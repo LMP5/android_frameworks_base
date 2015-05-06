@@ -280,17 +280,12 @@ public class PackageParser {
         /** Paths of any split APKs, ordered by parsed splitName */
         public final String[] splitCodePaths;
 
-        /** Revision code of base APK */
-        public final int baseRevisionCode;
-        /** Revision codes of any split APKs, ordered by parsed splitName */
-        public final int[] splitRevisionCodes;
-
         public final boolean coreApp;
         public final boolean multiArch;
 
 
         public PackageLite(String codePath, ApkLite baseApk, String[] splitNames,
-                String[] splitCodePaths, int[] splitRevisionCodes) {
+                String[] splitCodePaths) {
             this.packageName = baseApk.packageName;
             this.versionCode = baseApk.versionCode;
             this.installLocation = baseApk.installLocation;
@@ -299,8 +294,6 @@ public class PackageParser {
             this.codePath = codePath;
             this.baseCodePath = baseApk.codePath;
             this.splitCodePaths = splitCodePaths;
-            this.baseRevisionCode = baseApk.revisionCode;
-            this.splitRevisionCodes = splitRevisionCodes;
             this.coreApp = baseApk.coreApp;
             this.multiArch = baseApk.multiArch;
             this.isTheme = baseApk.isTheme;
@@ -324,7 +317,6 @@ public class PackageParser {
         public final String packageName;
         public final String splitName;
         public final int versionCode;
-        public final int revisionCode;
         public final int installLocation;
         public final VerifierInfo[] verifiers;
         public final Signature[] signatures;
@@ -333,13 +325,12 @@ public class PackageParser {
         public final boolean isTheme;
 
         public ApkLite(String codePath, String packageName, String splitName, int versionCode,
-                int revisionCode, int installLocation, List<VerifierInfo> verifiers,
-                Signature[] signatures, boolean coreApp, boolean multiArch, boolean isTheme) {
+                int installLocation, List<VerifierInfo> verifiers, Signature[] signatures,
+                boolean coreApp, boolean multiArch, boolean isTheme) {
             this.codePath = codePath;
             this.packageName = packageName;
             this.splitName = splitName;
             this.versionCode = versionCode;
-            this.revisionCode = revisionCode;
             this.installLocation = installLocation;
             this.verifiers = verifiers.toArray(new VerifierInfo[verifiers.size()]);
             this.signatures = signatures;
@@ -411,7 +402,7 @@ public class PackageParser {
      */
     public static PackageInfo generatePackageInfo(PackageParser.Package p,
             int gids[], int flags, long firstInstallTime, long lastUpdateTime,
-            ArraySet<String> grantedPermissions, PackageUserState state) {
+            HashSet<String> grantedPermissions, PackageUserState state) {
 
         return generatePackageInfo(p, gids, flags, firstInstallTime, lastUpdateTime,
                 grantedPermissions, state, UserHandle.getCallingUserId());
@@ -432,7 +423,7 @@ public class PackageParser {
 
     public static PackageInfo generatePackageInfo(PackageParser.Package p,
             int gids[], int flags, long firstInstallTime, long lastUpdateTime,
-            ArraySet<String> grantedPermissions, PackageUserState state, int userId) {
+            HashSet<String> grantedPermissions, PackageUserState state, int userId) {
 
         if (!checkUseInstalledOrHidden(flags, state)) {
             return null;
@@ -441,8 +432,6 @@ public class PackageParser {
         pi.packageName = p.packageName;
         pi.splitNames = p.splitNames;
         pi.versionCode = p.mVersionCode;
-        pi.baseRevisionCode = p.baseRevisionCode;
-        pi.splitRevisionCodes = p.splitRevisionCodes;
         pi.versionName = p.mVersionName;
         pi.sharedUserId = p.mSharedUserId;
         pi.sharedUserLabel = p.mSharedUserLabel;
@@ -689,7 +678,7 @@ public class PackageParser {
             throws PackageParserException {
         final ApkLite baseApk = parseApkLite(packageFile, flags);
         final String packagePath = packageFile.getAbsolutePath();
-        return new PackageLite(packagePath, baseApk, null, null, null);
+        return new PackageLite(packagePath, baseApk, null, null);
     }
 
     private static PackageLite parseClusterPackageLite(File packageDir, int flags)
@@ -746,24 +735,20 @@ public class PackageParser {
 
         String[] splitNames = null;
         String[] splitCodePaths = null;
-        int[] splitRevisionCodes = null;
         if (size > 0) {
             splitNames = new String[size];
             splitCodePaths = new String[size];
-            splitRevisionCodes = new int[size];
 
             splitNames = apks.keySet().toArray(splitNames);
             Arrays.sort(splitNames, sSplitNameComparator);
 
             for (int i = 0; i < size; i++) {
                 splitCodePaths[i] = apks.get(splitNames[i]).codePath;
-                splitRevisionCodes[i] = apks.get(splitNames[i]).revisionCode;
             }
         }
 
         final String codePath = packageDir.getAbsolutePath();
-        return new PackageLite(codePath, baseApk, splitNames, splitCodePaths,
-                splitRevisionCodes);
+        return new PackageLite(codePath, baseApk, splitNames, splitCodePaths);
     }
 
     /**
@@ -828,7 +813,6 @@ public class PackageParser {
                 final int num = lite.splitNames.length;
                 pkg.splitNames = lite.splitNames;
                 pkg.splitCodePaths = lite.splitCodePaths;
-                pkg.splitRevisionCodes = lite.splitRevisionCodes;
                 pkg.splitFlags = new int[num];
 
                 for (int i = 0; i < num; i++) {
@@ -1370,21 +1354,25 @@ public class PackageParser {
 
         int installLocation = PARSE_DEFAULT_INSTALL_LOCATION;
         int versionCode = 0;
-        int revisionCode = 0;
         boolean coreApp = false;
         boolean multiArch = false;
 
+        int numFound = 0;
         for (int i = 0; i < attrs.getAttributeCount(); i++) {
-            final String attr = attrs.getAttributeName(i);
+            String attr = attrs.getAttributeName(i);
             if (attr.equals("installLocation")) {
                 installLocation = attrs.getAttributeIntValue(i,
                         PARSE_DEFAULT_INSTALL_LOCATION);
+                numFound++;
             } else if (attr.equals("versionCode")) {
                 versionCode = attrs.getAttributeIntValue(i, 0);
-            } else if (attr.equals("revisionCode")) {
-                revisionCode = attrs.getAttributeIntValue(i, 0);
+                numFound++;
             } else if (attr.equals("coreApp")) {
                 coreApp = attrs.getAttributeBooleanValue(i, false);
+                numFound++;
+            }
+            if (numFound >= 3) {
+                break;
             }
         }
 
@@ -1442,8 +1430,7 @@ public class PackageParser {
         }
 
         return new ApkLite(codePath, packageSplit.first, packageSplit.second, versionCode,
-                revisionCode, installLocation, verifiers, signatures, coreApp, multiArch,
-                isTheme);
+                installLocation, verifiers, signatures, coreApp, multiArch, isTheme);
     }
 
     private static boolean isLegacyIconPack(XmlPullParser parser) {
@@ -1524,8 +1511,6 @@ public class PackageParser {
                 com.android.internal.R.styleable.AndroidManifest);
         pkg.mVersionCode = pkg.applicationInfo.versionCode = sa.getInteger(
                 com.android.internal.R.styleable.AndroidManifest_versionCode, 0);
-        pkg.baseRevisionCode = sa.getInteger(
-                com.android.internal.R.styleable.AndroidManifest_revisionCode, 0);
         pkg.mVersionName = sa.getNonConfigurationString(
                 com.android.internal.R.styleable.AndroidManifest_versionName, 0);
         if (pkg.mVersionName != null) {
@@ -3720,10 +3705,6 @@ public class PackageParser {
             outError[0] = "<provider> does not include authorities attribute";
             return null;
         }
-        if (cpname.length() <= 0) {
-            outError[0] = "<provider> has empty authorities attribute";
-            return null;
-        }
         p.info.authority = cpname.intern();
 
         if (!parseProviderTags(res, parser, attrs, p, outError)) {
@@ -4378,7 +4359,6 @@ public class PackageParser {
     public final static class Package {
 
         public String packageName;
-
         /** Names of any split APKs, ordered by parsed splitName */
         public String[] splitNames;
 
@@ -4395,11 +4375,6 @@ public class PackageParser {
         public String baseCodePath;
         /** Paths of any split APKs, ordered by parsed splitName */
         public String[] splitCodePaths;
-
-        /** Revision code of base APK */
-        public int baseRevisionCode;
-        /** Revision codes of any split APKs, ordered by parsed splitName */
-        public int[] splitRevisionCodes;
 
         /** Flags of any split APKs; ordered by parsed splitName */
         public int[] splitFlags;
@@ -4438,7 +4413,7 @@ public class PackageParser {
 
         // The version code declared for this package.
         public int mVersionCode;
-
+        
         // The version name declared for this package.
         public String mVersionName;
         

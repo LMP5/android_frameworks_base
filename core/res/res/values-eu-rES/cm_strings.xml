@@ -97,6 +97,12 @@
   <string name="app_ops_use_voice_volume">Deiaren bolumena kontrolatu</string>
   <string name="app_ops_write_mms">MMS mezu bat idatzi</string>
   <string name="app_ops_write_sms">SMS mezu bat idatzi</string>
+  <string name="stk_cc_ussd_to_dial">USSD eskaera DIAL eskaerara eraldatu da.</string>
+  <string name="stk_cc_ussd_to_ss">USSD eskaera SS eskaerara eraldatu da.</string>
+  <string name="stk_cc_ussd_to_ussd">USSD eskaera USSD eskaera berrira eraldatu da.</string>
+  <string name="stk_cc_ss_to_dial">SS eskaera DIAL eskaerara eraldatu da.</string>
+  <string name="stk_cc_ss_to_ussd">SS eskaera USSD eskaerara eraldatu da.</string>
+  <string name="stk_cc_ss_to_ss">SS eskaera SS eskaera berrira eraldatu da.</string>
   <string name="perf_profile_pwrsv">Energia aurreztea</string>
   <string name="perf_profile_bal">Orekatua</string>
   <string name="perf_profile_perf">Etekin handia</string>

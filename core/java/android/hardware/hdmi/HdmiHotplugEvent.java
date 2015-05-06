@@ -44,7 +44,7 @@ public final class HdmiHotplugEvent implements Parcelable {
     }
 
     /**
-     * Returns the port number for which the event occurred.
+     * Return the port number for which the event occurred.
      *
      * @return port number
      */
@@ -53,7 +53,7 @@ public final class HdmiHotplugEvent implements Parcelable {
     }
 
     /**
-     * Returns the connection status associated with this event
+     * Return the connection status associated with this event
      *
      * @return true if the device gets connected; otherwise false
      */
@@ -62,7 +62,7 @@ public final class HdmiHotplugEvent implements Parcelable {
     }
 
     /**
-     * Describes the kinds of special objects contained in this Parcelable's
+     * Describe the kinds of special objects contained in this Parcelable's
      * marshalled representation.
      */
     @Override
@@ -71,7 +71,7 @@ public final class HdmiHotplugEvent implements Parcelable {
     }
 
     /**
-     * Flattens this object in to a Parcel.
+     * Flatten this object in to a Parcel.
      *
      * @param dest The Parcel in which the object should be written.
      * @param flags Additional flags about how the object should be written.
@@ -86,19 +86,17 @@ public final class HdmiHotplugEvent implements Parcelable {
     public static final Parcelable.Creator<HdmiHotplugEvent> CREATOR
             = new Parcelable.Creator<HdmiHotplugEvent>() {
         /**
-         * Rebuilds a {@link HdmiHotplugEvent} previously stored with
+         * Rebuild a {@link HdmiHotplugEvent} previously stored with
          * {@link Parcelable#writeToParcel(Parcel, int)}.
          *
          * @param p {@link HdmiHotplugEvent} object to read the Rating from
          * @return a new {@link HdmiHotplugEvent} created from the data in the parcel
          */
-        @Override
         public HdmiHotplugEvent createFromParcel(Parcel p) {
             int port = p.readInt();
             boolean connected = p.readByte() == 1;
             return new HdmiHotplugEvent(port, connected);
         }
-        @Override
         public HdmiHotplugEvent[] newArray(int size) {
             return new HdmiHotplugEvent[size];
         }

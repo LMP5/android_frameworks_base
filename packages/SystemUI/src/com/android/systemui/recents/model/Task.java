@@ -129,7 +129,7 @@ public class Task {
     TaskCallbacks mCb;
 
     public Task() {
-        // Do nothing
+        // Only used by RecentsService for task rect calculations.
     }
 
     public Task(TaskKey key, boolean isActive, int taskAffiliation, int taskAffiliationColor,

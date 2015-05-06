@@ -16,7 +16,7 @@
 
 package com.android.systemui.recents.misc;
 
-import android.animation.Animator;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Rect;
@@ -183,14 +183,9 @@ public class Utilities {
         sPropertyMethod.invoke(null, property, value);
     }
 
-    /**
-     * Cancels an animation ensuring that if it has listeners, onCancel and onEnd
-     * are not called.
-     */
-    public static void cancelAnimationWithoutCallbacks(Animator animator) {
-        if (animator != null) {
-            animator.removeAllListeners();
-            animator.cancel();
-        }
+    /** Returns whether the specified intent is a document. */
+    public static boolean isDocument(Intent intent) {
+        int flags = intent.getFlags();
+        return (flags & Intent.FLAG_ACTIVITY_NEW_DOCUMENT) == Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
     }
 }

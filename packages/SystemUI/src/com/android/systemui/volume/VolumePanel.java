@@ -43,7 +43,6 @@ import android.media.VolumeProvider;
 import android.media.session.MediaController;
 import android.media.session.MediaController.PlaybackInfo;
 import android.net.Uri;
-import android.os.Bundle;
 import android.os.Debug;
 import android.os.Handler;
 import android.os.Message;
@@ -68,7 +67,6 @@ import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.TextView;
 
 import com.android.internal.R;
-import com.android.systemui.DemoMode;
 import com.android.systemui.statusbar.phone.SystemUIDialog;
 import com.android.systemui.statusbar.policy.ZenModeController;
 
@@ -80,11 +78,9 @@ import java.io.PrintWriter;
  *
  * @hide
  */
-public class VolumePanel extends Handler implements DemoMode {
+public class VolumePanel extends Handler {
     private static final String TAG = "VolumePanel";
     private static boolean LOGD = Log.isLoggable(TAG, Log.DEBUG);
-
-    private static final boolean BLUR_UI_ENABLED = true;
 
     private static final int PLAY_SOUND_DELAY = AudioService.PLAY_SOUND_DELAY;
 
@@ -122,7 +118,6 @@ public class VolumePanel extends Handler implements DemoMode {
     private static final int MSG_ZEN_MODE_AVAILABLE_CHANGED = 13;
     private static final int MSG_USER_ACTIVITY = 14;
     private static final int MSG_NOTIFICATION_EFFECTS_SUPPRESSOR_CHANGED = 15;
-    private static final int MSG_INTERNAL_RINGER_MODE_CHANGED = 16;
 
     // Pseudo stream type for master volume
     private static final int STREAM_MASTER = -100;
@@ -136,8 +131,6 @@ public class VolumePanel extends Handler implements DemoMode {
 
     private static final int IC_AUDIO_VOL = com.android.systemui.R.drawable.ic_audio_vol;
     private static final int IC_AUDIO_VOL_MUTE = com.android.systemui.R.drawable.ic_audio_vol_mute;
-    private static final int IC_AUDIO_BT = com.android.systemui.R.drawable.ic_audio_bt;
-    private static final int IC_AUDIO_BT_MUTE = com.android.systemui.R.drawable.ic_audio_bt_mute;
 
     private final String mTag;
     protected final Context mContext;
@@ -153,7 +146,6 @@ public class VolumePanel extends Handler implements DemoMode {
     private float mDisabledAlpha;
     private int mLastRingerMode = AudioManager.RINGER_MODE_NORMAL;
     private int mLastRingerProgress = 0;
-    private int mDemoIcon;
 
     // True if we want to play tones on the system stream when the master stream is specified.
     private final boolean mPlayMasterStreamTones;
@@ -171,8 +163,6 @@ public class VolumePanel extends Handler implements DemoMode {
     private final ViewGroup mSliderPanel;
     /** The zen mode configuration panel view */
     private ZenModePanel mZenPanel;
-    /** The component currently suppressing notification stream effects */
-    private ComponentName mNotificationEffectsSuppressor;
 
     private Callback mCallback;
     private ZenModePanel.Callback mZenPanelCallback;
@@ -182,23 +172,22 @@ public class VolumePanel extends Handler implements DemoMode {
     /** All the slider controls mapped by stream type */
     private SparseArray<StreamControl> mStreamControls;
     private final AccessibilityManager mAccessibilityManager;
-    private final IconPulser mIconPulser;
 
     private enum StreamResources {
         BluetoothSCOStream(AudioManager.STREAM_BLUETOOTH_SCO,
                 R.string.volume_icon_description_bluetooth,
-                IC_AUDIO_BT,
-                IC_AUDIO_BT_MUTE,
+                R.drawable.ic_audio_bt,
+                R.drawable.ic_audio_bt,
                 false),
         RingerStream(AudioManager.STREAM_RING,
                 R.string.volume_icon_description_ringer,
                 com.android.systemui.R.drawable.ic_ringer_audible,
-                com.android.systemui.R.drawable.ic_ringer_mute,
+                com.android.systemui.R.drawable.ic_ringer_vibrate,
                 true),
         VoiceStream(AudioManager.STREAM_VOICE_CALL,
                 R.string.volume_icon_description_incall,
-                com.android.systemui.R.drawable.ic_audio_phone,
-                com.android.systemui.R.drawable.ic_audio_phone,
+                R.drawable.ic_audio_phone,
+                R.drawable.ic_audio_phone,
                 true),
         AlarmStream(AudioManager.STREAM_ALARM,
                 R.string.volume_alarm,
@@ -223,8 +212,8 @@ public class VolumePanel extends Handler implements DemoMode {
                 false),
         RemoteStream(STREAM_REMOTE_MUSIC,
                 R.string.volume_icon_description_media, //FIXME should have its own description
-                com.android.systemui.R.drawable.ic_audio_remote,
-                com.android.systemui.R.drawable.ic_audio_remote,
+                R.drawable.ic_media_route_on_holo_dark,
+                R.drawable.ic_media_route_disabled_holo_dark,
                 false);// will be dynamically updated
 
         int streamType;
@@ -272,7 +261,6 @@ public class VolumePanel extends Handler implements DemoMode {
     // Synchronize when accessing this
     private ToneGenerator mToneGenerators[];
     private Vibrator mVibrator;
-    private boolean mHasVibrator;
 
     private static AlertDialog sSafetyWarning;
     private static Object sSafetyWarningLock = new Object();
@@ -369,7 +357,6 @@ public class VolumePanel extends Handler implements DemoMode {
         mAudioManager = (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
         mAccessibilityManager = (AccessibilityManager) context.getSystemService(
                 Context.ACCESSIBILITY_SERVICE);
-        mIconPulser = new IconPulser(context);
 
         // For now, only show master volume if master volume is supported
         final Resources res = context.getResources();
@@ -390,6 +377,7 @@ public class VolumePanel extends Handler implements DemoMode {
             arr.recycle();
         }
 
+        if (parent == null) {
             mDialog = new Dialog(context) {
                 @Override
                 public boolean onTouchEvent(MotionEvent event) {
@@ -400,48 +388,53 @@ public class VolumePanel extends Handler implements DemoMode {
                     }
                     return false;
                 }
-        };
+            };
 
-        final Window window = mDialog.getWindow();
-        window.requestFeature(Window.FEATURE_NO_TITLE);
-        mDialog.setCanceledOnTouchOutside(true);
-        mDialog.setContentView(com.android.systemui.R.layout.volume_dialog);
-        mDialog.setOnDismissListener(new OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialog) {
-                mActiveStreamType = -1;
-                mAudioManager.forceVolumeControlStream(mActiveStreamType);
-                setZenPanelVisible(false);
-                mDemoIcon = 0;
-            }
-        });
+            final Window window = mDialog.getWindow();
+            window.requestFeature(Window.FEATURE_NO_TITLE);
+            mDialog.setCanceledOnTouchOutside(true);
+            mDialog.setContentView(com.android.systemui.R.layout.volume_dialog);
+            mDialog.setOnDismissListener(new OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface dialog) {
+                    mActiveStreamType = -1;
+                    mAudioManager.forceVolumeControlStream(mActiveStreamType);
+                    setZenPanelVisible(false);
+                }
+            });
 
-        mDialog.create();
+            mDialog.create();
 
-        final LayoutParams lp = window.getAttributes();
-        lp.token = null;
-        lp.y = res.getDimensionPixelOffset(com.android.systemui.R.dimen.volume_panel_top);
-        lp.type = LayoutParams.TYPE_STATUS_BAR_PANEL;
-        lp.format = PixelFormat.TRANSLUCENT;
-        lp.windowAnimations = com.android.systemui.R.style.VolumePanelAnimation;
-        lp.setTitle(TAG);
-        window.setAttributes(lp);
+            final LayoutParams lp = window.getAttributes();
+            lp.token = null;
+            lp.y = res.getDimensionPixelOffset(com.android.systemui.R.dimen.volume_panel_top);
+            lp.type = LayoutParams.TYPE_STATUS_BAR_PANEL;
+            lp.format = PixelFormat.TRANSLUCENT;
+            lp.windowAnimations = com.android.systemui.R.style.VolumePanelAnimation;
+            lp.setTitle(TAG);
+            window.setAttributes(lp);
 
-        updateWidth();
+            updateWidth();
 
-        window.setBackgroundDrawable(new ColorDrawable(0x00000000));
-        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        window.addFlags(LayoutParams.FLAG_NOT_FOCUSABLE
-                | LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
-                | LayoutParams.FLAG_HARDWARE_ACCELERATED);
-        mView = window.findViewById(R.id.content);
-        Interaction.register(mView, new Interaction.Callback() {
-            @Override
-            public void onInteraction() {
-                resetTimeout();
-            }
-        });
+            window.setBackgroundDrawable(new ColorDrawable(0x00000000));
+            window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.addFlags(LayoutParams.FLAG_NOT_FOCUSABLE
+                    | LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    | LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                    | LayoutParams.FLAG_HARDWARE_ACCELERATED);
+            mView = window.findViewById(R.id.content);
+
+            Interaction.register(mView, new Interaction.Callback() {
+                @Override
+                public void onInteraction() {
+                    resetTimeout();
+                }
+            });
+        } else {
+            mDialog = null;
+            mView = LayoutInflater.from(mContext).inflate(
+                    com.android.systemui.R.layout.volume_panel, parent, false);
+        }
 
         mPanel = (ViewGroup) mView.findViewById(com.android.systemui.R.id.visible_panel);
         mSliderPanel = (ViewGroup) mView.findViewById(com.android.systemui.R.id.slider_panel);
@@ -450,9 +443,7 @@ public class VolumePanel extends Handler implements DemoMode {
 
         mToneGenerators = new ToneGenerator[AudioSystem.getNumStreamTypes()];
         mVibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        mHasVibrator = mVibrator != null && mVibrator.hasVibrator();
-        mVoiceCapable = context.getResources().getBoolean(
-                            com.android.internal.R.bool.config_voice_capable);
+        mVoiceCapable = context.getResources().getBoolean(R.bool.config_voice_capable);
 
         mVolumeLinkNotification = Settings.Secure.getInt(mContext.getContentResolver(),
                 Settings.Secure.VOLUME_LINK_NOTIFICATION, 1) == 1;
@@ -463,7 +454,6 @@ public class VolumePanel extends Handler implements DemoMode {
 
         if (mZenController != null && !useMasterVolume) {
             mZenModeAvailable = mZenController.isZenAvailable();
-            mNotificationEffectsSuppressor = mZenController.getEffectsSuppressor();
             mZenController.addCallback(mZenCallback);
         }
 
@@ -475,6 +465,7 @@ public class VolumePanel extends Handler implements DemoMode {
 
         boolean blurEnabled = false && context.getResources().getBoolean(R.bool.config_ui_blur_enabled);
         if (blurEnabled && mDialog != null && mDialog.getWindow() != null) {
+            Window window = mDialog.getWindow();
             window.addPrivateFlags(WindowManager.LayoutParams.PRIVATE_FLAG_BLUR_WITH_MASKING);
             window.setBlurMaskAlphaThreshold(0.48f);
             View mainContainer = window.findViewById(com.android.systemui.R.id.volume_dialog_bg_container);
@@ -482,7 +473,7 @@ public class VolumePanel extends Handler implements DemoMode {
                 com.android.systemui.R.drawable.volume_dialog_bg_translucent);
 
             mSliderPanel.setBackground(null);
-            window.findViewById(com.android.systemui.R.id.zen_buttons_container)
+            window.findViewById(com.android.systemui.R.id.zen_mode_panel_bg_container)
                 .setBackground(null);
         }
     }
@@ -515,10 +506,8 @@ public class VolumePanel extends Handler implements DemoMode {
         pw.print("  mTag="); pw.println(mTag);
         pw.print("  mRingIsSilent="); pw.println(mRingIsSilent);
         pw.print("  mVoiceCapable="); pw.println(mVoiceCapable);
-        pw.print("  mHasVibrator="); pw.println(mHasVibrator);
         pw.print("  mZenModeAvailable="); pw.println(mZenModeAvailable);
         pw.print("  mZenPanelExpanded="); pw.println(mZenPanelExpanded);
-        pw.print("  mNotificationEffectsSuppressor="); pw.println(mNotificationEffectsSuppressor);
         pw.print("  mTimeoutDelay="); pw.println(mTimeoutDelay);
         pw.print("  mDisabledAlpha="); pw.println(mDisabledAlpha);
         pw.print("  mLastRingerMode="); pw.println(mLastRingerMode);
@@ -546,9 +535,6 @@ public class VolumePanel extends Handler implements DemoMode {
                 if (sc.icon != null && sc.icon.isClickable()) pw.print(" (clickable)");
                 pw.println();
             }
-        }
-        if (mZenPanel != null) {
-            mZenPanel.dump(fd, pw, args);
         }
     }
 
@@ -597,7 +583,6 @@ public class VolumePanel extends Handler implements DemoMode {
     private void registerReceiver() {
         final IntentFilter filter = new IntentFilter();
         filter.addAction(AudioManager.RINGER_MODE_CHANGED_ACTION);
-        filter.addAction(AudioManager.INTERNAL_RINGER_MODE_CHANGED_ACTION);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         mContext.registerReceiver(new BroadcastReceiver() {
             @Override
@@ -606,12 +591,7 @@ public class VolumePanel extends Handler implements DemoMode {
 
                 if (AudioManager.RINGER_MODE_CHANGED_ACTION.equals(action)) {
                     removeMessages(MSG_RINGER_MODE_CHANGED);
-                    sendEmptyMessage(MSG_RINGER_MODE_CHANGED);
-                }
-
-                if (AudioManager.INTERNAL_RINGER_MODE_CHANGED_ACTION.equals(action)) {
-                    removeMessages(MSG_INTERNAL_RINGER_MODE_CHANGED);
-                    sendEmptyMessage(MSG_INTERNAL_RINGER_MODE_CHANGED);
+                    sendMessage(obtainMessage(MSG_RINGER_MODE_CHANGED));
                 }
 
                 if (Intent.ACTION_SCREEN_OFF.equals(action)) {
@@ -689,12 +669,10 @@ public class VolumePanel extends Handler implements DemoMode {
 
         mStreamControls = new SparseArray<StreamControl>(STREAMS.length);
 
-        final StreamResources notificationStream = StreamResources.NotificationStream;
         for (int i = 0; i < STREAMS.length; i++) {
             StreamResources streamRes = STREAMS[i];
 
             final int streamType = streamRes.streamType;
-            final boolean isNotification = isNotificationOrRing(streamType);
 
             final StreamControl sc = new StreamControl();
             sc.streamType = streamType;
@@ -707,19 +685,16 @@ public class VolumePanel extends Handler implements DemoMode {
             sc.iconRes = streamRes.iconRes;
             sc.iconMuteRes = streamRes.iconMuteRes;
             sc.icon.setImageResource(sc.iconRes);
-            sc.icon.setClickable(isNotification && mHasVibrator);
-            if (isNotification) {
-                if (mHasVibrator) {
-                    sc.icon.setSoundEffectsEnabled(false);
-                    sc.iconMuteRes = com.android.systemui.R.drawable.ic_ringer_vibrate;
-                    sc.icon.setOnClickListener(new OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            resetTimeout();
-                            toggleRinger(sc);
-                        }
-                    });
-                }
+            sc.icon.setClickable(isNotificationOrRing(streamType));
+            if (sc.icon.isClickable()) {
+                sc.icon.setSoundEffectsEnabled(false);
+                sc.icon.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        resetTimeout();
+                        toggle(sc);
+                    }
+                });
                 sc.iconSuppressedRes = com.android.systemui.R.drawable.ic_ringer_mute;
             }
             sc.seekbarView = (SeekBar) sc.group.findViewById(com.android.systemui.R.id.seekbar);
@@ -743,13 +718,12 @@ public class VolumePanel extends Handler implements DemoMode {
         }
     }
 
-    private void toggleRinger(StreamControl sc) {
-        if (!mHasVibrator) return;
-        if (mAudioManager.getRingerModeInternal() == AudioManager.RINGER_MODE_NORMAL) {
-            mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_VIBRATE);
+    private void toggle(StreamControl sc) {
+        if (mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_NORMAL) {
+            mAudioManager.setRingerMode(AudioManager.RINGER_MODE_VIBRATE);
             postVolumeChanged(sc.streamType, AudioManager.FLAG_SHOW_UI | AudioManager.FLAG_VIBRATE);
         } else {
-            mAudioManager.setRingerModeInternal(AudioManager.RINGER_MODE_NORMAL);
+            mAudioManager.setRingerMode(AudioManager.RINGER_MODE_NORMAL);
             postVolumeChanged(sc.streamType, AudioManager.FLAG_PLAY_SOUND);
         }
     }
@@ -764,7 +738,7 @@ public class VolumePanel extends Handler implements DemoMode {
             mSliderPanel.addView(active.group);
             mActiveStreamType = activeStreamType;
             active.group.setVisibility(View.VISIBLE);
-            updateSlider(active, true /*forceReloadIcon*/);
+            updateSlider(active);
         }
         updateTimeoutDelay();
         updateZenPanelVisible();
@@ -781,11 +755,10 @@ public class VolumePanel extends Handler implements DemoMode {
                     mSliderPanel.addView(control.group);
                     control.group.setVisibility(View.VISIBLE);
                     control.expandPanel.setVisibility(View.GONE);
-                    updateSlider(control, false);
+                    updateSlider(control);
                 }
             }
         }
-        updateZenPanelVisible();
     }
 
     private void diappearVolumePanel() {
@@ -797,7 +770,7 @@ public class VolumePanel extends Handler implements DemoMode {
                 if (control != null && control.streamType != mActiveStreamType) {
                     control.group.setVisibility(View.GONE);
                     control.expandPanel.setVisibility(View.GONE);
-                    updateSlider(control, false);
+                    updateSlider(control);
                 }
             }
         }
@@ -806,9 +779,7 @@ public class VolumePanel extends Handler implements DemoMode {
     private boolean isValidExpandedPanelControl(int streamType) {
         switch (streamType) {
             case AudioManager.STREAM_NOTIFICATION:
-                if (! mVoiceCapable) {
-                    return true;
-                } else if (mVoiceCapable && mVolumeLinkNotification) {
+                if (mVoiceCapable && mVolumeLinkNotification) {
                     return false;
                 }
             case AudioManager.STREAM_RING:
@@ -844,7 +815,7 @@ public class VolumePanel extends Handler implements DemoMode {
 
     private void updateSliderProgress(StreamControl sc, int progress) {
         final boolean isRinger = isNotificationOrRing(sc.streamType);
-        if (isRinger && mAudioManager.getRingerModeInternal() == AudioManager.RINGER_MODE_SILENT) {
+        if (isRinger && mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
             progress = mLastRingerProgress;
         }
         if (progress < 0) {
@@ -857,38 +828,30 @@ public class VolumePanel extends Handler implements DemoMode {
     }
 
     private void updateSliderIcon(StreamControl sc, boolean muted) {
-        ComponentName suppressor = null;
         if (isNotificationOrRing(sc.streamType)) {
-            suppressor = mNotificationEffectsSuppressor;
-            int ringerMode = mAudioManager.getRingerModeInternal();
+            int ringerMode = mAudioManager.getRingerMode();
             if (ringerMode == AudioManager.RINGER_MODE_SILENT) {
                 ringerMode = mLastRingerMode;
             } else {
                 mLastRingerMode = ringerMode;
             }
-            if (mHasVibrator) {
-                muted = ringerMode == AudioManager.RINGER_MODE_VIBRATE;
-            } else {
-                muted = false;
-            }
+            muted = ringerMode == AudioManager.RINGER_MODE_VIBRATE;
         }
-        sc.icon.setImageResource(mDemoIcon != 0 ? mDemoIcon
-                : suppressor != null ? sc.iconSuppressedRes
-                : muted ? sc.iconMuteRes
-                : sc.iconRes);
+        sc.icon.setImageResource(muted ? sc.iconMuteRes : sc.iconRes);
     }
 
-    private void updateSliderSuppressor(StreamControl sc) {
+    private void updateSliderSupressor(StreamControl sc) {
         final ComponentName suppressor = isNotificationOrRing(sc.streamType)
-                ? mNotificationEffectsSuppressor : null;
+                ? mZenController.getEffectsSuppressor() : null;
         if (suppressor == null) {
             sc.seekbarView.setVisibility(View.VISIBLE);
             sc.suppressorView.setVisibility(View.GONE);
         } else {
             sc.seekbarView.setVisibility(View.GONE);
             sc.suppressorView.setVisibility(View.VISIBLE);
-            sc.suppressorView.setText(mContext.getString(R.string.muted_by,
+            sc.suppressorView.setText(mContext.getString(com.android.systemui.R.string.muted_by,
                     getSuppressorCaption(suppressor)));
+            sc.icon.setImageResource(sc.iconSuppressedRes);
         }
     }
 
@@ -912,15 +875,14 @@ public class VolumePanel extends Handler implements DemoMode {
     }
 
     /** Update the mute and progress state of a slider */
-    private void updateSlider(StreamControl sc, boolean forceReloadIcon) {
+    private void updateSlider(StreamControl sc) {
         updateSliderProgress(sc, -1);
         final boolean muted = isMuted(sc.streamType);
-        if (forceReloadIcon) {
-            sc.icon.setImageDrawable(null);
-        }
+        // Force reloading the image resource
+        sc.icon.setImageDrawable(null);
         updateSliderIcon(sc, muted);
         updateSliderEnabled(sc, muted, false);
-        updateSliderSuppressor(sc);
+        updateSliderSupressor(sc);
     }
 
     private void updateSliderEnabled(final StreamControl sc, boolean muted, boolean fixedVolume) {
@@ -930,18 +892,13 @@ public class VolumePanel extends Handler implements DemoMode {
             // never disable touch interactions for remote playback, the muting is not tied to
             // the state of the phone.
             sc.seekbarView.setEnabled(!fixedVolume);
-        } else if (isRinger && mNotificationEffectsSuppressor != null) {
-            sc.icon.setEnabled(true);
-            sc.icon.setAlpha(1f);
-            sc.icon.setClickable(false);
-        } else if (isRinger
-                && mAudioManager.getRingerModeInternal() == AudioManager.RINGER_MODE_SILENT) {
+        } else if (isRinger && mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_SILENT) {
             sc.seekbarView.setEnabled(false);
             sc.icon.setEnabled(false);
             sc.icon.setAlpha(mDisabledAlpha);
             sc.icon.setClickable(false);
         } else if (fixedVolume ||
-                (sc.streamType != mAudioManager.getMasterStreamType() && !isRinger && muted) ||
+                (sc.streamType != mAudioManager.getMasterStreamType() && muted) ||
                 (sSafetyWarning != null)) {
             sc.seekbarView.setEnabled(false);
             if (!mVolumeLinkNotification && sc.streamType == AudioManager.STREAM_NOTIFICATION) {
@@ -957,7 +914,7 @@ public class VolumePanel extends Handler implements DemoMode {
         if (isRinger && wasEnabled != sc.seekbarView.isEnabled()) {
             if (sc.seekbarView.isEnabled()) {
                 sc.group.setOnTouchListener(null);
-                sc.icon.setClickable(mHasVibrator);
+                sc.icon.setClickable(true);
             } else {
                 final View.OnTouchListener showHintOnTouch = new View.OnTouchListener() {
                     @Override
@@ -978,19 +935,10 @@ public class VolumePanel extends Handler implements DemoMode {
         }
     }
 
-    private void showVibrateHint() {
-        final StreamControl active = mStreamControls.get(mActiveStreamType);
-        if (active != null) {
-            mIconPulser.start(active.icon);
-            if (!hasMessages(MSG_VIBRATE)) {
-                sendEmptyMessageDelayed(MSG_VIBRATE, VIBRATE_DELAY);
-            }
-        }
-    }
-
     private boolean isNotificationOrRing(int streamType) {
         return streamType == AudioManager.STREAM_RING ||
                 (mVolumeLinkNotification && streamType == AudioManager.STREAM_NOTIFICATION);
+
     }
 
     public void setCallback(Callback callback) {
@@ -1002,8 +950,7 @@ public class VolumePanel extends Handler implements DemoMode {
     }
 
     private void updateTimeoutDelay() {
-        mTimeoutDelay = mDemoIcon != 0 ? TIMEOUT_DELAY_EXPANDED
-                : sSafetyWarning != null ? TIMEOUT_DELAY_SAFETY_WARNING
+        mTimeoutDelay = sSafetyWarning != null ? TIMEOUT_DELAY_SAFETY_WARNING
                 : mActiveStreamType == AudioManager.STREAM_MUSIC ? TIMEOUT_DELAY_SHORT
                 : mZenPanelExpanded ? TIMEOUT_DELAY_EXPANDED
                 : isZenPanelVisible() ? TIMEOUT_DELAY_COLLAPSED
@@ -1033,20 +980,12 @@ public class VolumePanel extends Handler implements DemoMode {
         final int count = mSliderPanel.getChildCount();
         for (int i = 0; i < count; i++) {
             StreamControl sc = (StreamControl) mSliderPanel.getChildAt(i).getTag();
-            updateSlider(sc, true /*forceReloadIcon*/);
-        }
-    }
-
-    private void updateActiveSlider() {
-        final StreamControl active = mStreamControls.get(mActiveStreamType);
-        if (active != null) {
-            updateSlider(active, false /*forceReloadIcon*/);
+            updateSlider(sc);
         }
     }
 
     private void updateZenPanelVisible() {
-        setZenPanelVisible(mZenModeAvailable && 
-            (isNotificationOrRing(mActiveStreamType) || mExtendedPanelExpanded));
+        setZenPanelVisible(mZenModeAvailable && isNotificationOrRing(mActiveStreamType));
     }
 
     public void postVolumeChanged(int streamType, int flags) {
@@ -1127,14 +1066,6 @@ public class VolumePanel extends Handler implements DemoMode {
         obtainMessage(MSG_LAYOUT_DIRECTION, layoutDirection, 0).sendToTarget();
     }
 
-    private static String flagsToString(int flags) {
-        return flags == 0 ? "0" : (flags + "=" + AudioManager.flagsToString(flags));
-    }
-
-    private static String streamToString(int stream) {
-        return AudioService.streamToString(stream);
-    }
-
     /**
      * Override this if you have other work to do when the volume changes (for
      * example, vibrating, playing a sound, etc.). Make sure to call through to
@@ -1142,8 +1073,7 @@ public class VolumePanel extends Handler implements DemoMode {
      */
     protected void onVolumeChanged(int streamType, int flags) {
 
-        if (LOGD) Log.d(mTag, "onVolumeChanged(streamType: " + streamToString(streamType)
-                + ", flags: " + flagsToString(flags) + ")");
+        if (LOGD) Log.d(mTag, "onVolumeChanged(streamType: " + streamType + ", flags: " + flags + ")");
 
         if ((flags & AudioManager.FLAG_SHOW_UI) != 0) {
             synchronized (this) {
@@ -1172,8 +1102,7 @@ public class VolumePanel extends Handler implements DemoMode {
 
     protected void onMuteChanged(int streamType, int flags) {
 
-        if (LOGD) Log.d(mTag, "onMuteChanged(streamType: " + streamToString(streamType)
-                + ", flags: " + flagsToString(flags) + ")");
+        if (LOGD) Log.d(mTag, "onMuteChanged(streamType: " + streamType + ", flags: " + flags + ")");
 
         StreamControl sc = mStreamControls.get(streamType);
         if (sc != null) {
@@ -1189,8 +1118,8 @@ public class VolumePanel extends Handler implements DemoMode {
         mRingIsSilent = false;
 
         if (LOGD) {
-            Log.d(mTag, "onShowVolumeChanged(streamType: " + streamToString(streamType)
-                    + ", flags: " + flagsToString(flags) + "), index: " + index);
+            Log.d(mTag, "onShowVolumeChanged(streamType: " + streamType
+                    + ", flags: " + flags + "), index: " + index);
         }
 
         // get max volume for progress bar
@@ -1201,6 +1130,7 @@ public class VolumePanel extends Handler implements DemoMode {
         switch (streamType) {
 
             case AudioManager.STREAM_RING: {
+//                setRingerIcon();
                 Uri ringuri = RingtoneManager.getActualDefaultRingtoneUri(
                         mContext, RingtoneManager.TYPE_RINGTONE);
                 if (ringuri == null) {
@@ -1215,7 +1145,7 @@ public class VolumePanel extends Handler implements DemoMode {
                         (AudioManager.DEVICE_OUT_BLUETOOTH_A2DP |
                         AudioManager.DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES |
                         AudioManager.DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER)) != 0) {
-                    setMusicIcon(IC_AUDIO_BT, IC_AUDIO_BT_MUTE);
+                    setMusicIcon(R.drawable.ic_audio_bt, R.drawable.ic_audio_bt_mute);
                 } else {
                     setMusicIcon(IC_AUDIO_VOL, IC_AUDIO_VOL_MUTE);
                 }
@@ -1293,21 +1223,16 @@ public class VolumePanel extends Handler implements DemoMode {
                 sc.seekbarView.setMax(max);
             }
             updateSliderProgress(sc, index);
-            final boolean muted = isMuted(streamType);
-            updateSliderEnabled(sc, muted, (flags & AudioManager.FLAG_FIXED_VOLUME) != 0);
-            if (isNotificationOrRing(streamType)) {
-                updateSliderIcon(sc, muted);
-            }
+            updateSliderEnabled(sc, isMuted(streamType),
+                    (flags & AudioManager.FLAG_FIXED_VOLUME) != 0);
         }
 
         if (!isShowing()) {
             int stream = (streamType == STREAM_REMOTE_MUSIC) ? -1 : streamType;
             // when the stream is for remote playback, use -1 to reset the stream type evaluation
+            mAudioManager.forceVolumeControlStream(stream);
             if (mDialog != null) {
                 mDialog.show();
-            }
-            if (stream != STREAM_MASTER) {
-                mAudioManager.forceVolumeControlStream(stream);
             }
             if (mCallback != null) {
                 mCallback.onVisible(true);
@@ -1318,19 +1243,14 @@ public class VolumePanel extends Handler implements DemoMode {
         // Do a little vibrate if applicable (only when going into vibrate mode)
         if ((streamType != STREAM_REMOTE_MUSIC) &&
                 ((flags & AudioManager.FLAG_VIBRATE) != 0) &&
-                isNotificationOrRing(streamType) &&
-                mAudioManager.getRingerModeInternal() == AudioManager.RINGER_MODE_VIBRATE) {
+                mAudioManager.isStreamAffectedByRingerMode(streamType) &&
+                mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_VIBRATE) {
             sendMessageDelayed(obtainMessage(MSG_VIBRATE), VIBRATE_DELAY);
         }
 
-        // Pulse the zen icon if an adjustment was suppressed due to silent mode.
+        // Pulse the slider icon if an adjustment was suppressed due to silent mode.
         if ((flags & AudioManager.FLAG_SHOW_SILENT_HINT) != 0) {
             showSilentHint();
-        }
-
-        // Pulse the slider icon & vibrate if an adjustment down was suppressed due to vibrate mode.
-        if ((flags & AudioManager.FLAG_SHOW_VIBRATE_HINT) != 0) {
-            showVibrateHint();
         }
     }
 
@@ -1382,17 +1302,16 @@ public class VolumePanel extends Handler implements DemoMode {
     protected void onVibrate() {
 
         // Make sure we ended up in vibrate ringer mode
-        if (mAudioManager.getRingerModeInternal() != AudioManager.RINGER_MODE_VIBRATE) {
+        if (mAudioManager.getRingerMode() != AudioManager.RINGER_MODE_VIBRATE) {
             return;
         }
-        if (mVibrator != null) {
-            mVibrator.vibrate(VIBRATE_DURATION, VIBRATION_ATTRIBUTES);
-        }
+
+        mVibrator.vibrate(VIBRATE_DURATION, VIBRATION_ATTRIBUTES);
     }
 
     protected void onRemoteVolumeChanged(MediaController controller, int flags) {
-        if (LOGD) Log.d(mTag, "onRemoteVolumeChanged(controller:" + controller + ", flags: "
-                + flagsToString(flags) + ")");
+        if (LOGD) Log.d(mTag, "onRemoteVolumeChanged(controller:" + controller + ", flags: " + flags
+                    + ")");
 
         if (((flags & AudioManager.FLAG_SHOW_UI) != 0) || isShowing()) {
             synchronized (this) {
@@ -1586,10 +1505,9 @@ public class VolumePanel extends Handler implements DemoMode {
             }
 
             case MSG_RINGER_MODE_CHANGED:
-            case MSG_INTERNAL_RINGER_MODE_CHANGED:
             case MSG_NOTIFICATION_EFFECTS_SUPPRESSOR_CHANGED: {
                 if (isShowing()) {
-                    updateActiveSlider();
+                    updateStates();
                 }
                 break;
             }
@@ -1650,22 +1568,6 @@ public class VolumePanel extends Handler implements DemoMode {
         return mZenController;
     }
 
-    @Override
-    public void dispatchDemoCommand(String command, Bundle args) {
-        if (!COMMAND_VOLUME.equals(command)) return;
-        String icon = args.getString("icon");
-        final String iconMute = args.getString("iconmute");
-        final boolean mute = iconMute != null;
-        icon = mute ? iconMute : icon;
-        icon = icon.endsWith("Stream") ? icon : (icon + "Stream");
-        final StreamResources sr = StreamResources.valueOf(icon);
-        mDemoIcon = mute ? sr.iconMuteRes : sr.iconRes;
-        final int forcedStreamType = StreamResources.MediaStream.streamType;
-        mAudioManager.forceVolumeControlStream(forcedStreamType);
-        mAudioManager.adjustStreamVolume(forcedStreamType, AudioManager.ADJUST_SAME,
-                AudioManager.FLAG_SHOW_UI);
-    }
-
     private final OnSeekBarChangeListener mSeekListener = new OnSeekBarChangeListener() {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -1692,11 +1594,10 @@ public class VolumePanel extends Handler implements DemoMode {
         public void onZenAvailableChanged(boolean available) {
             obtainMessage(MSG_ZEN_MODE_AVAILABLE_CHANGED, available ? 1 : 0, 0).sendToTarget();
         }
-
         @Override
         public void onEffectsSupressorChanged() {
-            mNotificationEffectsSuppressor = mZenController.getEffectsSuppressor();
-            sendEmptyMessage(MSG_NOTIFICATION_EFFECTS_SUPPRESSOR_CHANGED);
+            obtainMessage(MSG_NOTIFICATION_EFFECTS_SUPPRESSOR_CHANGED,
+                    mZenController.getEffectsSuppressor()).sendToTarget();
         }
     };
 

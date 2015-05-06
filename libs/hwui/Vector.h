@@ -99,10 +99,6 @@ struct Vector2 {
         return x * v.x + y * v.y;
     }
 
-    float cross(const Vector2& v) const {
-        return x * v.y - y * v.x;
-    }
-
     void dump() {
         ALOGD("Vector2[%.2f, %.2f]", x, y);
     }

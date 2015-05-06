@@ -174,8 +174,6 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
 
                 for (int i = 0; i < count; i++) {
                     if (buffer[i] == 0) {
-                        // Note - do not log this raw message since it may contain
-                        // sensitive data
                         final String rawEvent = new String(
                                 buffer, start, i - start, StandardCharsets.UTF_8);
 
@@ -183,9 +181,6 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                         try {
                             final NativeDaemonEvent event = NativeDaemonEvent.parseRawEvent(
                                     rawEvent);
-
-                            log("RCV <- {" + event + "}");
-
                             if (event.isClassUnsolicited()) {
                                 // TODO: migrate to sending NativeDaemonEvent instances
                                 if (mCallbacks.onCheckHoldWakeLock(event.getCode())
@@ -201,7 +196,6 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                                 mResponseQueue.add(event.getCmdNumber(), event);
                             }
                         } catch (IllegalArgumentException e) {
-                            log("Problem parsing message " + e);
                         } finally {
                             if (releaseWl) {
                                 mWakeLock.acquire();
@@ -211,9 +205,8 @@ final class NativeDaemonConnector implements Runnable, Handler.Callback, Watchdo
                         start = i + 1;
                     }
                 }
-
                 if (start == 0) {
-                    log("RCV incomplete");
+                    final String rawEvent = new String(buffer, start, count, StandardCharsets.UTF_8);
                 }
 
                 // We should end at the amount we read. If not, compact then

@@ -55,6 +55,7 @@ public class QSDetailClipper {
         if (listener != null) {
             mAnimator.addListener(listener);
         }
+        mDetail.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         if (in) {
             mBackground.startTransition((int)(mAnimator.getDuration() * 0.6));
             mAnimator.addListener(mVisibleOnStart);
@@ -81,6 +82,7 @@ public class QSDetailClipper {
         }
 
         public void onAnimationEnd(Animator animation) {
+            mDetail.setLayerType(View.LAYER_TYPE_NONE, null);
             mAnimator = null;
         }
     };
@@ -88,6 +90,7 @@ public class QSDetailClipper {
     private final AnimatorListenerAdapter mGoneOnEnd = new AnimatorListenerAdapter() {
         @Override
         public void onAnimationEnd(Animator animation) {
+            mDetail.setLayerType(View.LAYER_TYPE_NONE, null);
             mDetail.setVisibility(View.GONE);
             mBackground.resetTransition();
             mAnimator = null;

@@ -119,7 +119,9 @@ public class StackScrollState {
                     }
 
                     // apply alpha
-                    child.setAlpha(newAlpha);
+                    if (!becomesInvisible) {
+                        child.setAlpha(newAlpha);
+                    }
                 }
 
                 // apply visibility
@@ -154,7 +156,7 @@ public class StackScrollState {
                 child.setDimmed(state.dimmed, false /* animate */);
 
                 // apply dark
-                child.setDark(state.dark, false /* animate */, 0 /* delay */);
+                child.setDark(state.dark, false /* animate */);
 
                 // apply hiding sensitive
                 child.setHideSensitive(
@@ -234,8 +236,6 @@ public class StackScrollState {
         public static final int LOCATION_MAIN_AREA = 0x08;
         public static final int LOCATION_BOTTOM_STACK_PEEKING = 0x10;
         public static final int LOCATION_BOTTOM_STACK_HIDDEN = 0x20;
-        /** The view isn't layouted at all. */
-        public static final int LOCATION_GONE = 0x40;
 
         float alpha;
         float yTranslation;

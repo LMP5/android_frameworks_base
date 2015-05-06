@@ -1,7 +1,4 @@
 /*
- * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
- * Not a Contribution.
- *
  * Copyright (C) 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +16,12 @@
 
 package com.android.keyguard;
 
-import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.provider.AlarmClock;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;
@@ -110,8 +105,6 @@ public class KeyguardStatusView extends GridLayout {
         mAlarmStatusView = (TextView) findViewById(R.id.alarm_status);
         mDateView = (TextClock) findViewById(R.id.date_view);
         mClockView = (TextClock) findViewById(R.id.clock_view);
-        mDateView.setShowCurrentUserTime(true);
-        mClockView.setShowCurrentUserTime(true);
         mOwnerInfo = (TextView) findViewById(R.id.owner_info);
         mLockPatternUtils = new LockPatternUtils(getContext());
         final boolean screenOn = KeyguardUpdateMonitor.getInstance(mContext).isScreenOn();
@@ -167,9 +160,7 @@ public class KeyguardStatusView extends GridLayout {
         if (info == null) {
             return "";
         }
-        String skeleton = DateFormat.is24HourFormat(context, ActivityManager.getCurrentUser())
-                ? "EHm"
-                : "Ehma";
+        String skeleton = DateFormat.is24HourFormat(context) ? "EHm" : "Ehma";
         String pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), skeleton);
         return DateFormat.format(pattern, info.getTriggerTime()).toString();
     }
@@ -232,20 +223,10 @@ public class KeyguardStatusView extends GridLayout {
                     : R.string.abbrev_wday_month_day_no_year);
             final String clockView12Skel = res.getString(R.string.clock_12hr_format);
             final String clockView24Skel = res.getString(R.string.clock_24hr_format);
+            final String key = locale.toString() + dateViewSkel + clockView12Skel + clockView24Skel;
+            if (key.equals(cacheKey)) return;
 
-            if (res.getBoolean(com.android.internal.R.bool.def_custom_dateformat)) {
-                final String dateformat = Settings.System.getString(context.getContentResolver(),
-                        Settings.System.DATE_FORMAT);
-                dateView = dateformat.equals(dateView) ? dateView : dateformat;
-            } else {
-                final String key = locale.toString() + dateViewSkel + clockView12Skel
-                        + clockView24Skel;
-                if (key.equals(cacheKey)) {
-                    return;
-                }
-                dateView = DateFormat.getBestDateTimePattern(locale, dateViewSkel);
-                cacheKey = key;
-            }
+            dateView = DateFormat.getBestDateTimePattern(locale, dateViewSkel);
 
             clockView12 = DateFormat.getBestDateTimePattern(locale, clockView12Skel);
             // CLDR insists on adding an AM/PM indicator even though it wasn't in the skeleton
@@ -260,6 +241,7 @@ public class KeyguardStatusView extends GridLayout {
             clockView24 = clockView24.replace(':', '\uee01');
             clockView12 = clockView12.replace(':', '\uee01');
 
+            cacheKey = key;
         }
     }
 }

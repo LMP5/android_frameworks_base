@@ -141,16 +141,6 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
                 }
             }
         }
-
-        @Override
-        public void showScreenPinningRequest() {
-            if (mBar != null) {
-                try {
-                    mBar.showScreenPinningRequest();
-                } catch (RemoteException e) {
-                }
-            }
-        }
     };
 
     // ================================================================================
@@ -305,10 +295,9 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
         }
     }
 
-    /**
+    /** 
      * Hide or show the on-screen Menu key. Only call this from the window manager, typically in
-     * response to a window with {@link android.view.WindowManager.LayoutParams#needsMenuKey} set
-     * to {@link android.view.WindowManager.LayoutParams#NEEDS_MENU_SET_TRUE}.
+     * response to a window with FLAG_NEEDS_MENU_KEY set.
      */
     @Override
     public void topAppWindowChanged(final boolean menuVisible) {
@@ -362,7 +351,7 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
     }
 
     @Override
-    public void setSystemUiVisibility(int vis, int mask, String cause) {
+    public void setSystemUiVisibility(int vis, int mask) {
         // also allows calls from window manager which is in this process.
         enforceStatusBarService();
 
@@ -374,7 +363,7 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
                     mCurrentUserId,
                     vis & StatusBarManager.DISABLE_MASK,
                     mSysUiVisToken,
-                    cause);
+                    "WindowManager.LayoutParams");
         }
     }
 
@@ -494,26 +483,16 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
     }
 
     /**
-     * @param clearNotificationEffects whether to consider notifications as "shown" and stop
-     *     LED, vibration, and ringing
+     * The status bar service should call this each time the user brings the panel from
+     * invisible to visible in order to clear the notification light.
      */
     @Override
-    public void onPanelRevealed(boolean clearNotificationEffects) {
+    public void onPanelRevealed() {
         enforceStatusBarService();
         long identity = Binder.clearCallingIdentity();
         try {
-            mNotificationDelegate.onPanelRevealed(clearNotificationEffects);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
-    @Override
-    public void clearNotificationEffects() throws RemoteException {
-        enforceStatusBarService();
-        long identity = Binder.clearCallingIdentity();
-        try {
-            mNotificationDelegate.clearEffects();
+            // tell the notification manager to turn off the lights.
+            mNotificationDelegate.onPanelRevealed();
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -538,20 +517,6 @@ public class StatusBarManagerService extends IStatusBarService.Stub {
         long identity = Binder.clearCallingIdentity();
         try {
             mNotificationDelegate.onNotificationClick(callingUid, callingPid, key);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
-    @Override
-    public void onNotificationActionClick(String key, int actionIndex) {
-        enforceStatusBarService();
-        final int callingUid = Binder.getCallingUid();
-        final int callingPid = Binder.getCallingPid();
-        long identity = Binder.clearCallingIdentity();
-        try {
-            mNotificationDelegate.onNotificationActionClick(callingUid, callingPid, key,
-                    actionIndex);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }

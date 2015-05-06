@@ -64,11 +64,10 @@ public class PowerStatusMonitorAction extends HdmiCecFeatureAction {
 
     @Override
     boolean processCommand(HdmiCecMessage cmd) {
-        if (mState == STATE_WAIT_FOR_REPORT_POWER_STATUS
-                && cmd.getOpcode() == Constants.MESSAGE_REPORT_POWER_STATUS) {
-            return handleReportPowerStatus(cmd);
+        if (mState != STATE_WAIT_FOR_REPORT_POWER_STATUS) {
+            return false;
         }
-        return false;
+        return handleReportPowerStatus(cmd);
     }
 
     private boolean handleReportPowerStatus(HdmiCecMessage cmd) {

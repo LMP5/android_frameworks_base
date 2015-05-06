@@ -35,13 +35,6 @@ public class DozeLog {
     private static final int SIZE = Build.IS_DEBUGGABLE ? 400 : 50;
     private static final SimpleDateFormat FORMAT = new SimpleDateFormat("MM-dd HH:mm:ss.SSS");
 
-    private static final int PULSE_REASONS = 4;
-
-    public static final int PULSE_REASON_INTENT = 0;
-    public static final int PULSE_REASON_NOTIFICATION = 1;
-    public static final int PULSE_REASON_SENSOR_SIGMOTION = 2;
-    public static final int PULSE_REASON_SENSOR_PICKUP = 3;
-
     private static long[] sTimes;
     private static String[] sMessages;
     private static int sPosition;
@@ -55,7 +48,8 @@ public class DozeLog {
     private static SummaryStats sScreenOnPulsingStats;
     private static SummaryStats sScreenOnNotPulsingStats;
     private static SummaryStats sEmergencyCallStats;
-    private static SummaryStats[][] sProxStats; // [reason][near/far]
+    private static SummaryStats sProxNearStats;
+    private static SummaryStats sProxFarStats;
 
     public static void tracePickupPulse(boolean withinVibrationThreshold) {
         if (!ENABLED) return;
@@ -64,10 +58,10 @@ public class DozeLog {
                 : sPickupPulseNotNearVibrationStats).append();
     }
 
-    public static void tracePulseStart(int reason) {
+    public static void tracePulseStart() {
         if (!ENABLED) return;
         sPulsing = true;
-        log("pulseStart reason=" + pulseReasonToString(reason));
+        log("pulseStart");
     }
 
     public static void tracePulseFinish() {
@@ -96,11 +90,8 @@ public class DozeLog {
                 sScreenOnPulsingStats = new SummaryStats();
                 sScreenOnNotPulsingStats = new SummaryStats();
                 sEmergencyCallStats = new SummaryStats();
-                sProxStats = new SummaryStats[PULSE_REASONS][2];
-                for (int i = 0; i < PULSE_REASONS; i++) {
-                    sProxStats[i][0] = new SummaryStats();
-                    sProxStats[i][1] = new SummaryStats();
-                }
+                sProxNearStats = new SummaryStats();
+                sProxFarStats = new SummaryStats();
                 log("init");
                 KeyguardUpdateMonitor.getInstance(context).registerCallback(sKeyguardCallback);
             }
@@ -146,21 +137,10 @@ public class DozeLog {
         }
     }
 
-    public static void traceProximityResult(boolean near, long millis, int pulseReason) {
+    public static void traceProximityResult(boolean near, long millis) {
         if (!ENABLED) return;
-        log("proximityResult reason=" + pulseReasonToString(pulseReason) + " near=" + near
-                + " millis=" + millis);
-        sProxStats[pulseReason][near ? 0 : 1].append();
-    }
-
-    public static String pulseReasonToString(int pulseReason) {
-        switch (pulseReason) {
-            case PULSE_REASON_INTENT: return "intent";
-            case PULSE_REASON_NOTIFICATION: return "notification";
-            case PULSE_REASON_SENSOR_SIGMOTION: return "sigmotion";
-            case PULSE_REASON_SENSOR_PICKUP: return "pickup";
-            default: throw new IllegalArgumentException("bad reason: " + pulseReason);
-        }
+        log("proximityResult near=" + near + " millis=" + millis);
+        (near ? sProxNearStats : sProxFarStats).append();
     }
 
     public static void dump(PrintWriter pw) {
@@ -184,11 +164,8 @@ public class DozeLog {
             sScreenOnPulsingStats.dump(pw, "Screen on (pulsing)");
             sScreenOnNotPulsingStats.dump(pw, "Screen on (not pulsing)");
             sEmergencyCallStats.dump(pw, "Emergency call");
-            for (int i = 0; i < PULSE_REASONS; i++) {
-                final String reason = pulseReasonToString(i);
-                sProxStats[i][0].dump(pw, "Proximity near (" + reason + ")");
-                sProxStats[i][1].dump(pw, "Proximity far (" + reason + ")");
-            }
+            sProxNearStats.dump(pw, "Proximity (near)");
+            sProxFarStats.dump(pw, "Proximity (far)");
         }
     }
 
@@ -211,7 +188,6 @@ public class DozeLog {
         }
 
         public void dump(PrintWriter pw, String type) {
-            if (mCount == 0) return;
             pw.print("    ");
             pw.print(type);
             pw.print(": n=");

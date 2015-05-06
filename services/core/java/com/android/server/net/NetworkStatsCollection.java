@@ -22,19 +22,14 @@ import static android.net.NetworkStats.SET_DEFAULT;
 import static android.net.NetworkStats.TAG_NONE;
 import static android.net.NetworkStats.UID_ALL;
 import static android.net.TrafficStats.UID_REMOVED;
-import static android.text.format.DateUtils.SECOND_IN_MILLIS;
-import static android.text.format.DateUtils.WEEK_IN_MILLIS;
 
-import android.net.ConnectivityManager;
 import android.net.NetworkIdentity;
 import android.net.NetworkStats;
 import android.net.NetworkStatsHistory;
 import android.net.NetworkTemplate;
 import android.net.TrafficStats;
-import android.util.ArrayMap;
+import android.text.format.DateUtils;
 import android.util.AtomicFile;
-
-import libcore.io.IoUtils;
 
 import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.FileRotator;
@@ -49,12 +44,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.net.ProtocolException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+
+import libcore.io.IoUtils;
 
 /**
  * Collection of {@link NetworkStatsHistory}, stored based on combined key of
@@ -73,7 +70,7 @@ public class NetworkStatsCollection implements FileRotator.Reader {
 
     private static final int VERSION_UNIFIED_INIT = 16;
 
-    private ArrayMap<Key, NetworkStatsHistory> mStats = new ArrayMap<>();
+    private HashMap<Key, NetworkStatsHistory> mStats = Maps.newHashMap();
 
     private final long mBucketDuration;
 
@@ -148,13 +145,12 @@ public class NetworkStatsCollection implements FileRotator.Reader {
             NetworkTemplate template, int uid, int set, int tag, int fields, long start, long end) {
         final NetworkStatsHistory combined = new NetworkStatsHistory(
                 mBucketDuration, estimateBuckets(), fields);
-        for (int i = 0; i < mStats.size(); i++) {
-            final Key key = mStats.keyAt(i);
+        for (Map.Entry<Key, NetworkStatsHistory> entry : mStats.entrySet()) {
+            final Key key = entry.getKey();
             final boolean setMatches = set == SET_ALL || key.set == set;
             if (key.uid == uid && setMatches && key.tag == tag
                     && templateMatches(template, key.ident)) {
-                final NetworkStatsHistory value = mStats.valueAt(i);
-                combined.recordHistory(value, start, end);
+                combined.recordHistory(entry.getValue(), start, end);
             }
         }
         return combined;
@@ -174,11 +170,11 @@ public class NetworkStatsCollection implements FileRotator.Reader {
         // shortcut when we know stats will be empty
         if (start == end) return stats;
 
-        for (int i = 0; i < mStats.size(); i++) {
-            final Key key = mStats.keyAt(i);
+        for (Map.Entry<Key, NetworkStatsHistory> mapEntry : mStats.entrySet()) {
+            final Key key = mapEntry.getKey();
             if (templateMatches(template, key.ident)) {
-                final NetworkStatsHistory value = mStats.valueAt(i);
-                historyEntry = value.getValues(start, end, now, historyEntry);
+                final NetworkStatsHistory history = mapEntry.getValue();
+                historyEntry = history.getValues(start, end, now, historyEntry);
 
                 entry.iface = IFACE_ALL;
                 entry.uid = key.uid;
@@ -229,10 +225,8 @@ public class NetworkStatsCollection implements FileRotator.Reader {
      * into this collection.
      */
     public void recordCollection(NetworkStatsCollection another) {
-        for (int i = 0; i < another.mStats.size(); i++) {
-            final Key key = another.mStats.keyAt(i);
-            final NetworkStatsHistory value = another.mStats.valueAt(i);
-            recordHistory(key, value);
+        for (Map.Entry<Key, NetworkStatsHistory> entry : another.mStats.entrySet()) {
+            recordHistory(entry.getKey(), entry.getValue());
         }
     }
 
@@ -466,7 +460,7 @@ public class NetworkStatsCollection implements FileRotator.Reader {
     }
 
     private int estimateBuckets() {
-        return (int) (Math.min(mEndMillis - mStartMillis, WEEK_IN_MILLIS * 5)
+        return (int) (Math.min(mEndMillis - mStartMillis, DateUtils.WEEK_IN_MILLIS * 5)
                 / mBucketDuration);
     }
 
@@ -485,54 +479,6 @@ public class NetworkStatsCollection implements FileRotator.Reader {
             pw.increaseIndent();
             history.dump(pw, true);
             pw.decreaseIndent();
-        }
-    }
-
-    public void dumpCheckin(PrintWriter pw, long start, long end) {
-        dumpCheckin(pw, start, end, NetworkTemplate.buildTemplateMobileWildcard(), "cell");
-        dumpCheckin(pw, start, end, NetworkTemplate.buildTemplateWifiWildcard(), "wifi");
-        dumpCheckin(pw, start, end, NetworkTemplate.buildTemplateEthernet(), "eth");
-        dumpCheckin(pw, start, end, NetworkTemplate.buildTemplateBluetooth(), "bt");
-    }
-
-    /**
-     * Dump all contained stats that match requested parameters, but group
-     * together all matching {@link NetworkTemplate} under a single prefix.
-     */
-    private void dumpCheckin(PrintWriter pw, long start, long end, NetworkTemplate groupTemplate,
-            String groupPrefix) {
-        final ArrayMap<Key, NetworkStatsHistory> grouped = new ArrayMap<>();
-
-        // Walk through all history, grouping by matching network templates
-        for (int i = 0; i < mStats.size(); i++) {
-            final Key key = mStats.keyAt(i);
-            final NetworkStatsHistory value = mStats.valueAt(i);
-
-            if (!templateMatches(groupTemplate, key.ident)) continue;
-
-            final Key groupKey = new Key(null, key.uid, key.set, key.tag);
-            NetworkStatsHistory groupHistory = grouped.get(groupKey);
-            if (groupHistory == null) {
-                groupHistory = new NetworkStatsHistory(value.getBucketDuration());
-                grouped.put(groupKey, groupHistory);
-            }
-            groupHistory.recordHistory(value, start, end);
-        }
-
-        for (int i = 0; i < grouped.size(); i++) {
-            final Key key = grouped.keyAt(i);
-            final NetworkStatsHistory value = grouped.valueAt(i);
-
-            if (value.size() == 0) continue;
-
-            pw.print("c,");
-            pw.print(groupPrefix); pw.print(',');
-            pw.print(key.uid); pw.print(',');
-            pw.print(NetworkStats.setToCheckinString(key.set)); pw.print(',');
-            pw.print(key.tag);
-            pw.println();
-
-            value.dumpCheckin(pw);
         }
     }
 
@@ -582,20 +528,7 @@ public class NetworkStatsCollection implements FileRotator.Reader {
 
         @Override
         public int compareTo(Key another) {
-            int res = 0;
-            if (ident != null && another.ident != null) {
-                res = ident.compareTo(another.ident);
-            }
-            if (res == 0) {
-                res = Integer.compare(uid, another.uid);
-            }
-            if (res == 0) {
-                res = Integer.compare(set, another.set);
-            }
-            if (res == 0) {
-                res = Integer.compare(tag, another.tag);
-            }
-            return res;
+            return Integer.compare(uid, another.uid);
         }
     }
 }

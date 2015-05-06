@@ -27,33 +27,22 @@ interface IPhoneSubInfo {
      */
     String getDeviceId();
 
-     /**
-     * Retrieves the unique Network Access ID
-     */
-    String getNaiForSubscriber(int subId);
-
     /**
-     * Retrieves the unique device ID of a phone for the device, e.g., IMEI
+     * Retrieves the unique device ID of a subId for the device, e.g., IMEI
      * for GSM phones.
      */
-    String getDeviceIdForPhone(int phoneId);
+    String getDeviceIdForSubscriber(long subId);
 
     /**
      * Retrieves the IMEI.
      */
-    String getImeiForSubscriber(int subId);
+    String getImeiForSubscriber(long subId);
 
     /**
      * Retrieves the software version number for the device, e.g., IMEI/SV
      * for GSM phones.
      */
     String getDeviceSvn();
-
-    /**
-     * Retrieves the software version number of a subId for the device, e.g., IMEI/SV
-     * for GSM phones.
-     */
-    String getDeviceSvnUsingSubId(int subId);
 
     /**
      * Retrieves the unique sbuscriber ID, e.g., IMSI for GSM phones.
@@ -63,7 +52,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the unique subscriber ID of a given subId, e.g., IMSI for GSM phones.
      */
-    String getSubscriberIdForSubscriber(int subId);
+    String getSubscriberIdForSubscriber(long subId);
 
     /**
      * Retrieves the Group Identifier Level1 for GSM phones.
@@ -73,7 +62,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the Group Identifier Level1 for GSM phones of a subId.
      */
-    String getGroupIdLevel1ForSubscriber(int subId);
+    String getGroupIdLevel1ForSubscriber(long subId);
 
     /**
      * Retrieves the serial number of the ICC, if applicable.
@@ -83,7 +72,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the serial number of a given subId.
      */
-    String getIccSerialNumberForSubscriber(int subId);
+    String getIccSerialNumberForSubscriber(long subId);
 
     /**
      * Retrieves the phone number string for line 1.
@@ -93,7 +82,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the phone number string for line 1 of a subcription.
      */
-    String getLine1NumberForSubscriber(int subId);
+    String getLine1NumberForSubscriber(long subId);
 
 
     /**
@@ -104,7 +93,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the alpha identifier for line 1 of a subId.
      */
-    String getLine1AlphaTagForSubscriber(int subId);
+    String getLine1AlphaTagForSubscriber(long subId);
 
 
     /**
@@ -115,7 +104,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the Msisdn of a subId.
      */
-    String getMsisdnForSubscriber(int subId);
+    String getMsisdnForSubscriber(long subId);
 
     /**
      * Retrieves the voice mail number.
@@ -125,7 +114,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the voice mail number of a given subId.
      */
-    String getVoiceMailNumberForSubscriber(int subId);
+    String getVoiceMailNumberForSubscriber(long subId);
 
     /**
      * Retrieves the complete voice mail number.
@@ -135,7 +124,7 @@ interface IPhoneSubInfo {
     /**
      * Retrieves the complete voice mail number for particular subId
      */
-    String getCompleteVoiceMailNumberForSubscriber(int subId);
+    String getCompleteVoiceMailNumberForSubscriber(long subId);
 
     /**
      * Retrieves the alpha identifier associated with the voice mail number.
@@ -146,7 +135,7 @@ interface IPhoneSubInfo {
      * Retrieves the alpha identifier associated with the voice mail number
      * of a subId.
      */
-    String getVoiceMailAlphaTagForSubscriber(int subId);
+    String getVoiceMailAlphaTagForSubscriber(long subId);
 
     /**
      * Returns the IMS private user identity (IMPI) that was loaded from the ISIM.
@@ -199,5 +188,5 @@ interface IPhoneSubInfo {
      * @param data authentication challenge data
      * @return challenge response
      */
-    String getIccSimChallengeResponse(int subId, int appType, String data);
+    String getIccSimChallengeResponse(long subId, int appType, String data);
 }

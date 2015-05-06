@@ -84,7 +84,7 @@ void LayerCache::deleteLayer(Layer* layer) {
                 layer->getFbo());
         mSize -= layer->getWidth() * layer->getHeight() * 4;
         layer->state = Layer::kState_DeletedFromCache;
-        layer->decStrong(0);
+        Caches::getInstance().resourceCache.decrementRefcount(layer);
     }
 }
 

@@ -16,7 +16,6 @@
 
 package com.android.server;
 
-import com.android.internal.annotations.GuardedBy;
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.textservice.ISpellCheckerService;
 import com.android.internal.textservice.ISpellCheckerSession;
@@ -29,18 +28,14 @@ import org.xmlpull.v1.XmlPullParserException;
 import android.app.ActivityManagerNative;
 import android.app.AppGlobals;
 import android.app.IUserSwitchObserver;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
-import android.content.pm.UserInfo;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -48,7 +43,6 @@ import android.os.IRemoteCallback;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.os.UserManager;
 import android.provider.Settings;
 import android.service.textservice.SpellCheckerService;
 import android.text.TextUtils;
@@ -90,12 +84,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
     public TextServicesManagerService(Context context) {
         mSystemReady = false;
         mContext = context;
-
-        final IntentFilter broadcastFilter = new IntentFilter();
-        broadcastFilter.addAction(Intent.ACTION_USER_ADDED);
-        broadcastFilter.addAction(Intent.ACTION_USER_REMOVED);
-        mContext.registerReceiver(new TextServicesBroadcastReceiver(), broadcastFilter);
-
         int userId = UserHandle.USER_OWNER;
         try {
             ActivityManagerNative.getDefault().registerUserSwitchObserver(
@@ -131,7 +119,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
 
     private void switchUserLocked(int userId) {
         mSettings.setCurrentUserId(userId);
-        updateCurrentProfileIds();
         unbindServiceLocked();
         buildSpellCheckerMapLocked(mContext, mSpellCheckerList, mSpellCheckerMap, mSettings);
         SpellCheckerInfo sci = getCurrentSpellChecker(null);
@@ -144,16 +131,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
                 setCurrentSpellCheckerLocked(sci.getId());
             }
         }
-    }
-
-    void updateCurrentProfileIds() {
-        List<UserInfo> profiles =
-                UserManager.get(mContext).getProfiles(mSettings.getCurrentUserId());
-        int[] currentProfileIds = new int[profiles.size()]; // profiles will not be null
-        for (int i = 0; i < currentProfileIds.length; i++) {
-            currentProfileIds[i] = profiles.get(i).id;
-        }
-        mSettings.setCurrentProfileIds(currentProfileIds);
     }
 
     private class TextServicesMonitor extends PackageMonitor {
@@ -191,19 +168,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
                     }
                 }
             }
-        }
-    }
-
-    class TextServicesBroadcastReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-            if (Intent.ACTION_USER_ADDED.equals(action)
-                    || Intent.ACTION_USER_REMOVED.equals(action)) {
-                updateCurrentProfileIds();
-                return;
-            }
-            Slog.w(TAG, "Unexpected intent " + intent);
         }
     }
 
@@ -259,7 +223,7 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
             Slog.d(TAG, "--- calledFromForegroundUserOrSystemProcess ? "
                     + "calling uid = " + uid + " system uid = " + Process.SYSTEM_UID
                     + " calling userId = " + userId + ", foreground user id = "
-                    + mSettings.getCurrentUserId() + ", calling pid = " + Binder.getCallingPid());
+                    + mSettings.getCurrentUserId());
             try {
                 final String[] packageNames = AppGlobals.getPackageManager().getPackagesForUid(uid);
                 for (int i = 0; i < packageNames.length; ++i) {
@@ -273,40 +237,10 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
 
         if (uid == Process.SYSTEM_UID || userId == mSettings.getCurrentUserId()) {
             return true;
+        } else {
+            Slog.w(TAG, "--- IPC called from background users. Ignore. \n" + getStackTrace());
+            return false;
         }
-
-        // Permits current profile to use TSFM as long as the current text service is the system's
-        // one. This is a tentative solution and should be replaced with fully functional multiuser
-        // support.
-        // TODO: Implement multiuser support in TSMS.
-        final boolean isCurrentProfile = mSettings.isCurrentProfile(userId);
-        if (DBG) {
-            Slog.d(TAG, "--- userId = "+ userId + " isCurrentProfile = " + isCurrentProfile);
-        }
-        if (mSettings.isCurrentProfile(userId)) {
-            final SpellCheckerInfo spellCheckerInfo = getCurrentSpellCheckerWithoutVerification();
-            if (spellCheckerInfo != null) {
-                final ServiceInfo serviceInfo = spellCheckerInfo.getServiceInfo();
-                final boolean isSystemSpellChecker =
-                        (serviceInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-                if (DBG) {
-                    Slog.d(TAG, "--- current spell checker = "+ spellCheckerInfo.getPackageName()
-                            + " isSystem = " + isSystemSpellChecker);
-                }
-                if (isSystemSpellChecker) {
-                    return true;
-                }
-            }
-        }
-
-        // Unlike InputMethodManagerService#calledFromValidUser, INTERACT_ACROSS_USERS_FULL isn't
-        // taken into account here.  Anyway this method is supposed to be removed once multiuser
-        // support is implemented.
-        if (DBG) {
-            Slog.d(TAG, "--- IPC from userId:" + userId + " is being ignored. \n"
-                    + getStackTrace());
-        }
-        return false;
     }
 
     private boolean bindCurrentSpellCheckerService(
@@ -358,10 +292,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
         if (!calledFromValidUser()) {
             return null;
         }
-        return getCurrentSpellCheckerWithoutVerification();
-    }
-
-    private SpellCheckerInfo getCurrentSpellCheckerWithoutVerification() {
         synchronized (mSpellCheckerMap) {
             final String curSpellCheckerId = mSettings.getSelectedSpellChecker();
             if (DBG) {
@@ -984,10 +914,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
     private static class TextServicesSettings {
         private final ContentResolver mResolver;
         private int mCurrentUserId;
-        @GuardedBy("mLock")
-        private int[] mCurrentProfileIds = new int[0];
-        private Object mLock = new Object();
-
         public TextServicesSettings(ContentResolver resolver, int userId) {
             mResolver = resolver;
             mCurrentUserId = userId;
@@ -1000,22 +926,6 @@ public class TextServicesManagerService extends ITextServicesManager.Stub {
             }
             // TSMS settings are kept per user, so keep track of current user
             mCurrentUserId = userId;
-        }
-
-        public void setCurrentProfileIds(int[] currentProfileIds) {
-            synchronized (mLock) {
-                mCurrentProfileIds = currentProfileIds;
-            }
-        }
-
-        public boolean isCurrentProfile(int userId) {
-            synchronized (mLock) {
-                if (userId == mCurrentUserId) return true;
-                for (int i = 0; i < mCurrentProfileIds.length; i++) {
-                    if (userId == mCurrentProfileIds[i]) return true;
-                }
-                return false;
-            }
         }
 
         public int getCurrentUserId() {

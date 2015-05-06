@@ -156,7 +156,7 @@ public class PreferenceManager {
      * should be used ANY time a preference will be displayed, since some preference
      * types need an Activity for managed queries.
      */
-    /*package*/ PreferenceManager(Context context) {
+    private PreferenceManager(Context context) {
         init(context);
     }
 

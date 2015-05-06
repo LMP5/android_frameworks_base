@@ -15,7 +15,7 @@
  */
 package com.android.systemui.screenshot;
 
-import com.android.systemui.R;
+import com.android.systemui.tests.R;
 
 import android.app.Activity;
 import android.os.Bundle;

@@ -20,16 +20,14 @@ namespace uirenderer {
 namespace renderthread {
 
 TimeLord::TimeLord()
-        : mFrameIntervalNanos(milliseconds_to_nanoseconds(16))
+        : mFrameIntervalNanos(0)
         , mFrameTimeNanos(0) {
 }
 
-bool TimeLord::vsyncReceived(nsecs_t vsync) {
+void TimeLord::vsyncReceived(nsecs_t vsync) {
     if (vsync > mFrameTimeNanos) {
         mFrameTimeNanos = vsync;
-        return true;
     }
-    return false;
 }
 
 nsecs_t TimeLord::computeFrameTimeMs() {

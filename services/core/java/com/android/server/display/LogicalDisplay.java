@@ -118,7 +118,6 @@ final class LogicalDisplay {
                 mInfo.copyFrom(mOverrideDisplayInfo);
                 mInfo.layerStack = mBaseDisplayInfo.layerStack;
                 mInfo.name = mBaseDisplayInfo.name;
-                mInfo.uniqueId = mBaseDisplayInfo.uniqueId;
                 mInfo.state = mBaseDisplayInfo.state;
             } else {
                 mInfo.copyFrom(mBaseDisplayInfo);
@@ -209,7 +208,6 @@ final class LogicalDisplay {
             mBaseDisplayInfo.type = deviceInfo.type;
             mBaseDisplayInfo.address = deviceInfo.address;
             mBaseDisplayInfo.name = deviceInfo.name;
-            mBaseDisplayInfo.uniqueId = deviceInfo.uniqueId;
             mBaseDisplayInfo.appWidth = deviceInfo.width;
             mBaseDisplayInfo.appHeight = deviceInfo.height;
             mBaseDisplayInfo.logicalWidth = deviceInfo.width;

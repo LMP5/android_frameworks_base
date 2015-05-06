@@ -35,8 +35,6 @@ import android.util.Log;
 
 import com.android.org.bouncycastle.util.encoders.Base64;
 
-import libcore.io.IoUtils;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -561,7 +559,11 @@ public class LocalTransport extends BackupTransport {
     // Full restore handling
 
     private void resetFullRestoreState() {
-        IoUtils.closeQuietly(mCurFullRestoreStream);
+        try {
+        mCurFullRestoreStream.close();
+        } catch (IOException e) {
+            Log.w(TAG, "Unable to close full restore input stream");
+        }
         mCurFullRestoreStream = null;
         mFullRestoreSocketStream = null;
         mFullRestoreBuffer = null;

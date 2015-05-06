@@ -40,10 +40,7 @@ public final class RemoteConference {
         public void onDisconnected(RemoteConference conference, DisconnectCause disconnectCause) {}
         public void onConnectionAdded(RemoteConference conference, RemoteConnection connection) {}
         public void onConnectionRemoved(RemoteConference conference, RemoteConnection connection) {}
-        public void onConnectionCapabilitiesChanged(
-                RemoteConference conference,
-                int connectionCapabilities) {}
-        /** @hide */
+        public void onCapabilitiesChanged(RemoteConference conference, int capabilities) {}
         public void onPropertiesChanged(RemoteConference conference, int properties) {}
         public void onConferenceableConnectionsChanged(
                 RemoteConference conference,
@@ -64,7 +61,7 @@ public final class RemoteConference {
 
     private int mState = Connection.STATE_NEW;
     private DisconnectCause mDisconnectCause;
-    private int mConnectionCapabilities;
+    private int mCallCapabilities;
     private int mCallProperties;
 
     /** {@hide} */
@@ -130,11 +127,11 @@ public final class RemoteConference {
     }
 
     /** {@hide} */
-    void setConnectionCapabilities(int connectionCapabilities) {
-        if (mConnectionCapabilities != connectionCapabilities) {
-            mConnectionCapabilities = connectionCapabilities;
+    void setCallCapabilities(int capabilities) {
+        if (mCallCapabilities != capabilities) {
+            mCallCapabilities = capabilities;
             for (Callback c : mCallbacks) {
-                c.onConnectionCapabilitiesChanged(this, mConnectionCapabilities);
+                c.onCapabilitiesChanged(this, mCallCapabilities);
             }
         }
     }
@@ -177,16 +174,10 @@ public final class RemoteConference {
         return mState;
     }
 
-    /** @hide */
-    @Deprecated public final int getCallCapabilities() {
-        return getConnectionCapabilities();
+    public final int getCallCapabilities() {
+        return mCallCapabilities;
     }
 
-    public final int getConnectionCapabilities() {
-        return mConnectionCapabilities;
-    }
-
-    /** @hide */
     public final int getCallProperties() {
         return mCallProperties;
     }

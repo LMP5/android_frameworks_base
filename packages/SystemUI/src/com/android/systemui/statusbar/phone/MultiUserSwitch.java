@@ -72,18 +72,15 @@ public class MultiUserSwitch extends FrameLayout implements View.OnClickListener
 
     @Override
     public void onClick(View v) {
-        if (UserSwitcherController.isUserSwitcherAvailable(mUserManager)) {
+        if (opensUserSwitcherWhenClicked()) {
             if (mKeyguardMode) {
                 if (mKeyguardUserSwitcher != null) {
                     mKeyguardUserSwitcher.show(true /* animate */);
                 }
             } else {
                 if (mQsPanel != null) {
-                    UserSwitcherController userSwitcherController =
-                            mQsPanel.getHost().getUserSwitcherController();
-                    if (userSwitcherController != null) {
-                        mQsPanel.showDetailAdapter(true, userSwitcherController.userDetailAdapter);
-                    }
+                    mQsPanel.showDetailAdapter(true,
+                            mQsPanel.getHost().getUserSwitcherController().userDetailAdapter);
                 }
             }
         } else {
@@ -104,14 +101,12 @@ public class MultiUserSwitch extends FrameLayout implements View.OnClickListener
 
         if (isClickable()) {
             String text;
-            if (UserSwitcherController.isUserSwitcherAvailable(mUserManager)) {
+            if (opensUserSwitcherWhenClicked()) {
                 String currentUser = null;
                 if (mQsPanel != null) {
                     UserSwitcherController controller = mQsPanel.getHost()
                             .getUserSwitcherController();
-                    if (controller != null) {
-                        currentUser = controller.getCurrentUserName(mContext);
-                    }
+                    currentUser = controller.getCurrentUserName(mContext);
                 }
                 if (TextUtils.isEmpty(currentUser)) {
                     text = mContext.getString(R.string.accessibility_multi_user_switch_switcher);
@@ -135,4 +130,8 @@ public class MultiUserSwitch extends FrameLayout implements View.OnClickListener
         return false;
     }
 
+    private boolean opensUserSwitcherWhenClicked() {
+        UserManager um = UserManager.get(getContext());
+        return UserManager.supportsMultipleUsers() && um.isUserSwitcherEnabled();
+    }
 }

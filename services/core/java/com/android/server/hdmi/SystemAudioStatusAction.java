@@ -79,7 +79,7 @@ final class SystemAudioStatusAction extends HdmiCecFeatureAction {
 
     @Override
     boolean processCommand(HdmiCecMessage cmd) {
-        if (mState != STATE_WAIT_FOR_REPORT_AUDIO_STATUS || mAvrAddress != cmd.getSource()) {
+        if (mState != STATE_WAIT_FOR_REPORT_AUDIO_STATUS) {
             return false;
         }
 

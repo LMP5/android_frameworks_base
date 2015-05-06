@@ -139,9 +139,7 @@ only with an explicit intent.</p>
 intent when starting a {@link android.app.Service} and do not
 declare intent filters for your services. Using an implicit intent to start a service is a
 security hazard because you cannot be certain what service will respond to the intent,
-and the user cannot see which service starts. Beginning with Android 5.0 (API level 21), the system
-throws an exception if you call {@link android.content.Context#bindService bindService()}
-with an implicit intent.</p>
+and the user cannot see which service starts.</p>
 
 
 
@@ -426,18 +424,18 @@ android.content.Intent#createChooser createChooser()} and pass it to {@link
 android.app.Activity#startActivity startActivity()}. For example:</p>
 
 <pre>
-Intent sendIntent = new Intent(Intent.ACTION_SEND);
+Intent intent = new Intent(Intent.ACTION_SEND);
 ...
 
 // Always use string resources for UI text.
 // This says something like "Share this photo with"
 String title = getResources().getString(R.string.chooser_title);
-// Create intent to show the chooser dialog
-Intent chooser = Intent.createChooser(sendIntent, title);
+// Create intent to show chooser
+Intent chooser = Intent.createChooser(intent, title);
 
-// Verify the original intent will resolve to at least one activity
+// Verify the intent will resolve to at least one activity
 if (sendIntent.resolveActivity(getPackageManager()) != null) {
-    startActivity(chooser);
+    startActivity(sendIntent);
 }
 </pre>
 

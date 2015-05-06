@@ -1,8 +1,10 @@
 page.title=Building a Notification
-page.tags=notifications
-helpoutsWidget=true
+parent.title=Notifying the User
+parent.link=index.html
 
 trainingnavtop=true
+next.title=Preserving Navigation when Starting an Activity
+next.link=navigation.html
 
 @jd:body
 

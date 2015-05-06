@@ -22,7 +22,6 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Window;
-import com.android.internal.content.ReferrerIntent;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -311,8 +310,8 @@ public class LocalActivityManager {
                 if (aInfo.launchMode != ActivityInfo.LAUNCH_MULTIPLE ||
                         (intent.getFlags()&Intent.FLAG_ACTIVITY_SINGLE_TOP) != 0) {
                     // The activity wants onNewIntent() called.
-                    ArrayList<ReferrerIntent> intents = new ArrayList<>(1);
-                    intents.add(new ReferrerIntent(intent, mParent.getPackageName()));
+                    ArrayList<Intent> intents = new ArrayList<Intent>(1);
+                    intents.add(intent);
                     if (localLOGV) Log.v(TAG, r.id + ": new intent");
                     mActivityThread.performNewIntents(r, intents);
                     r.intent = intent;

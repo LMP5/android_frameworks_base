@@ -301,23 +301,28 @@ public final class BroadcastQueue {
     }
 
     public void skipCurrentReceiverLocked(ProcessRecord app) {
-        BroadcastRecord r = null;
-        if (mOrderedBroadcasts.size() > 0) {
-            BroadcastRecord br = mOrderedBroadcasts.get(0);
-            if (br.curApp == app) {
-                r = br;
-            }
-        }
-        if (r == null && mPendingBroadcast != null && mPendingBroadcast.curApp == app) {
-            if (DEBUG_BROADCAST) Slog.v(TAG,
-                    "[" + mQueueName + "] skip & discard pending app " + r);
-            r = mPendingBroadcast;
-        }
-
-        if (r != null) {
+        boolean reschedule = false;
+        BroadcastRecord r = app.curReceiver;
+        if (r != null && r.queue == this) {
+            // The current broadcast is waiting for this app's receiver
+            // to be finished.  Looks like that's not going to happen, so
+            // let the broadcast continue.
             logBroadcastReceiverDiscardLocked(r);
             finishReceiverLocked(r, r.resultCode, r.resultData,
                     r.resultExtras, r.resultAbort, false);
+            reschedule = true;
+        }
+
+        r = mPendingBroadcast;
+        if (r != null && r.curApp == app) {
+            if (DEBUG_BROADCAST) Slog.v(TAG,
+                    "[" + mQueueName + "] skip & discard pending app " + r);
+            logBroadcastReceiverDiscardLocked(r);
+            finishReceiverLocked(r, r.resultCode, r.resultData,
+                    r.resultExtras, r.resultAbort, false);
+            reschedule = true;
+        }
+        if (reschedule) {
             scheduleBroadcastsLocked();
         }
     }

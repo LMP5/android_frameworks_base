@@ -25,7 +25,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Point;
 import android.hardware.display.DisplayManagerGlobal;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
@@ -920,7 +919,7 @@ public final class UiAutomation {
         public IAccessibilityServiceClientImpl(Looper looper) {
             super(null, looper, new Callbacks() {
                 @Override
-                public void init(int connectionId, IBinder windowToken) {
+                public void onSetConnectionId(int connectionId) {
                     synchronized (mLock) {
                         mConnectionId = connectionId;
                         mLock.notifyAll();

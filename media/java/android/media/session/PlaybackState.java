@@ -16,7 +16,6 @@
 package android.media.session;
 
 import android.annotation.DrawableRes;
-import android.annotation.Nullable;
 import android.media.RemoteControlClient;
 import android.os.Bundle;
 import android.os.Parcel;
@@ -233,12 +232,11 @@ public final class PlaybackState implements Parcelable {
     private final CharSequence mErrorMessage;
     private final long mUpdateTime;
     private final long mActiveItemId;
-    private final Bundle mExtras;
 
     private PlaybackState(int state, long position, long updateTime, float speed,
             long bufferedPosition, long transportControls,
             List<PlaybackState.CustomAction> customActions, long activeItemId,
-            CharSequence error, Bundle extras) {
+            CharSequence error) {
         mState = state;
         mPosition = position;
         mSpeed = speed;
@@ -248,7 +246,6 @@ public final class PlaybackState implements Parcelable {
         mCustomActions = new ArrayList<>(customActions);
         mActiveItemId = activeItemId;
         mErrorMessage = error;
-        mExtras = extras;
     }
 
     private PlaybackState(Parcel in) {
@@ -261,7 +258,7 @@ public final class PlaybackState implements Parcelable {
         mCustomActions = in.createTypedArrayList(CustomAction.CREATOR);
         mActiveItemId = in.readLong();
         mErrorMessage = in.readCharSequence();
-        mExtras = in.readBundle();
+
     }
 
     @Override
@@ -296,7 +293,6 @@ public final class PlaybackState implements Parcelable {
         dest.writeTypedList(mCustomActions);
         dest.writeLong(mActiveItemId);
         dest.writeCharSequence(mErrorMessage);
-        dest.writeBundle(mExtras);
     }
 
     /**
@@ -310,7 +306,6 @@ public final class PlaybackState implements Parcelable {
      * <li> {@link PlaybackState#STATE_REWINDING}</li>
      * <li> {@link PlaybackState#STATE_BUFFERING}</li>
      * <li> {@link PlaybackState#STATE_ERROR}</li>
-     * </ul>
      */
     public int getState() {
         return mState;
@@ -396,15 +391,6 @@ public final class PlaybackState implements Parcelable {
      */
     public long getActiveQueueItemId() {
         return mActiveItemId;
-    }
-
-    /**
-     * Get any custom extras that were set on this playback state.
-     *
-     * @return The extras for this state or null.
-     */
-    public @Nullable Bundle getExtras() {
-        return mExtras;
     }
 
     /**
@@ -751,7 +737,6 @@ public final class PlaybackState implements Parcelable {
         private CharSequence mErrorMessage;
         private long mUpdateTime;
         private long mActiveItemId = MediaSession.QueueItem.UNKNOWN_ID;
-        private Bundle mExtras;
 
         /**
          * Creates an initially empty state builder.
@@ -780,7 +765,6 @@ public final class PlaybackState implements Parcelable {
             mErrorMessage = from.mErrorMessage;
             mUpdateTime = from.mUpdateTime;
             mActiveItemId = from.mActiveItemId;
-            mExtras = from.mExtras;
         }
 
         /**
@@ -963,25 +947,13 @@ public final class PlaybackState implements Parcelable {
         }
 
         /**
-         * Set any custom extras to be included with the playback state.
-         *
-         * @param extras The extras to include.
-         * @return this
-         */
-        public Builder setExtras(Bundle extras) {
-            mExtras = extras;
-            return this;
-        }
-
-        /**
-         * Build and return the {@link PlaybackState} instance with these
-         * values.
+         * Build and return the {@link PlaybackState} instance with these values.
          *
          * @return A new state instance.
          */
         public PlaybackState build() {
             return new PlaybackState(mState, mPosition, mUpdateTime, mSpeed, mBufferedPosition,
-                    mActions, mCustomActions, mActiveItemId, mErrorMessage, mExtras);
+                    mActions, mCustomActions, mActiveItemId, mErrorMessage);
         }
     }
 }

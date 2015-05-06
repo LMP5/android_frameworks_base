@@ -21,7 +21,6 @@ import android.annotation.Nullable;
 import android.app.ActionBar;
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -67,9 +66,7 @@ import java.util.List;
  *     <li><em>A navigation button.</em> This may be an Up arrow, navigation menu toggle, close,
  *     collapse, done or another glyph of the app's choosing. This button should always be used
  *     to access other navigational destinations within the container of the Toolbar and
- *     its signified content or otherwise leave the current context signified by the Toolbar.
- *     The navigation button is vertically aligned within the Toolbar's
- *     {@link android.R.styleable#View_minHeight minimum height}, if set.</li>
+ *     its signified content or otherwise leave the current context signified by the Toolbar.</li>
  *     <li><em>A branded logo image.</em> This may extend to the height of the bar and can be
  *     arbitrarily wide.</li>
  *     <li><em>A title and subtitle.</em> The title should be a signpost for the Toolbar's current
@@ -85,9 +82,8 @@ import java.util.List;
  *     <li><em>An {@link ActionMenuView action menu}.</em> The menu of actions will pin to the
  *     end of the Toolbar offering a few
  *     <a href="http://developer.android.com/design/patterns/actionbar.html#ActionButtons">
- *     frequent, important or typical</a> actions along with an optional overflow menu for
- *     additional actions. Action buttons are vertically aligned within the Toolbar's
- *     {@link android.R.styleable#View_minHeight minimum height}, if set.</li>
+ *         frequent, important or typical</a> actions along with an optional overflow menu for
+ *         additional actions.</li>
  * </ul>
  * </p>
  *
@@ -105,7 +101,6 @@ public class Toolbar extends ViewGroup {
     private ImageView mLogoView;
 
     private Drawable mCollapseIcon;
-    private CharSequence mCollapseDescription;
     private ImageButton mCollapseButtonView;
     View mExpandedActionView;
 
@@ -240,7 +235,6 @@ public class Toolbar extends ViewGroup {
         }
 
         mCollapseIcon = a.getDrawable(R.styleable.Toolbar_collapseIcon);
-        mCollapseDescription = a.getText(R.styleable.Toolbar_collapseContentDescription);
 
         final CharSequence title = a.getText(R.styleable.Toolbar_title);
         if (!TextUtils.isEmpty(title)) {
@@ -1001,7 +995,6 @@ public class Toolbar extends ViewGroup {
         if (mCollapseButtonView == null) {
             mCollapseButtonView = new ImageButton(getContext(), null, 0, mNavButtonStyle);
             mCollapseButtonView.setImageDrawable(mCollapseIcon);
-            mCollapseButtonView.setContentDescription(mCollapseDescription);
             final LayoutParams lp = generateDefaultLayoutParams();
             lp.gravity = Gravity.START | (mButtonGravity & Gravity.VERTICAL_GRAVITY_MASK);
             lp.mViewType = LayoutParams.EXPANDED;
@@ -1750,17 +1743,6 @@ public class Toolbar extends ViewGroup {
     public void setMenuCallbacks(MenuPresenter.Callback pcb, MenuBuilder.Callback mcb) {
         mActionMenuPresenterCallback = pcb;
         mMenuBuilderCallback = mcb;
-    }
-
-    /**
-     * Accessor to enable LayoutLib to get ActionMenuPresenter directly.
-     */
-    ActionMenuPresenter getOuterActionMenuPresenter() {
-        return mOuterActionMenuPresenter;
-    }
-
-    Context getPopupContext() {
-        return mPopupContext;
     }
 
     /**

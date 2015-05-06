@@ -42,8 +42,7 @@ CanvasContext::CanvasContext(RenderThread& thread, bool translucent,
         : mRenderThread(thread)
         , mEglManager(thread.eglManager())
         , mEglSurface(EGL_NO_SURFACE)
-        , mBufferPreserved(false)
-        , mSwapBehavior(kSwap_default)
+        , mDirtyRegionsEnabled(false)
         , mOpaque(!translucent)
         , mCanvas(NULL)
         , mHaveNewSurface(false)
@@ -71,8 +70,6 @@ void CanvasContext::destroy() {
 }
 
 void CanvasContext::setSurface(ANativeWindow* window) {
-    ATRACE_CALL();
-
     mNativeWindow = window;
 
     if (mEglSurface != EGL_NO_SURFACE) {
@@ -85,8 +82,7 @@ void CanvasContext::setSurface(ANativeWindow* window) {
     }
 
     if (mEglSurface != EGL_NO_SURFACE) {
-        const bool preserveBuffer = (mSwapBehavior != kSwap_discardBuffer);
-        mBufferPreserved = mEglManager.setPreserveBuffer(mEglSurface, preserveBuffer);
+        mDirtyRegionsEnabled = mEglManager.enableDirtyRegions(mEglSurface);
         mHaveNewSurface = true;
         makeCurrent();
     } else {
@@ -107,10 +103,6 @@ void CanvasContext::requireSurface() {
     makeCurrent();
 }
 
-void CanvasContext::setSwapBehavior(SwapBehavior swapBehavior) {
-    mSwapBehavior = swapBehavior;
-}
-
 bool CanvasContext::initialize(ANativeWindow* window) {
     setSurface(window);
     if (mCanvas) return false;
@@ -123,8 +115,8 @@ void CanvasContext::updateSurface(ANativeWindow* window) {
     setSurface(window);
 }
 
-bool CanvasContext::pauseSurface(ANativeWindow* window) {
-    return mRenderThread.removeFrameCallback(this);
+void CanvasContext::pauseSurface(ANativeWindow* window) {
+    stopDrawing();
 }
 
 // TODO: don't pass viewport size, it's automatic via EGL
@@ -168,11 +160,6 @@ void CanvasContext::prepareTree(TreeInfo& info) {
         freePrefetechedLayers();
     }
 
-    if (CC_UNLIKELY(!mNativeWindow.get())) {
-        info.out.canDrawThisFrame = false;
-        return;
-    }
-
     int runningBehind = 0;
     // TODO: This query is moderately expensive, investigate adding some sort
     // of fast-path based off when we last called eglSwapBuffers() as well as
@@ -213,7 +200,7 @@ void CanvasContext::draw() {
     if (width != mCanvas->getViewportWidth() || height != mCanvas->getViewportHeight()) {
         mCanvas->setViewport(width, height);
         dirty.setEmpty();
-    } else if (!mBufferPreserved || mHaveNewSurface) {
+    } else if (!mDirtyRegionsEnabled || mHaveNewSurface) {
         dirty.setEmpty();
     } else {
         if (!dirty.isEmpty() && !dirty.intersect(0, 0, width, height)) {
@@ -243,8 +230,6 @@ void CanvasContext::draw() {
 
     if (status & DrawGlInfo::kStatusDrew) {
         swapBuffers();
-    } else {
-        mEglManager.cancelFrame();
     }
 
     profiler().finishFrame();
@@ -345,7 +330,6 @@ void CanvasContext::trimMemory(RenderThread& thread, int level) {
     // No context means nothing to free
     if (!thread.eglManager().hasEglContext()) return;
 
-    ATRACE_CALL();
     thread.eglManager().requireGlContext();
     if (level >= TRIM_MEMORY_COMPLETE) {
         Caches::getInstance().flush(Caches::kFlushMode_Full);

@@ -64,12 +64,12 @@ public final class HdmiPlaybackClient extends HdmiClient {
         public void onComplete(int status);
     }
 
-    /* package */ HdmiPlaybackClient(IHdmiControlService service) {
+    HdmiPlaybackClient(IHdmiControlService service) {
         super(service);
     }
 
     /**
-     * Performs the feature 'one touch play' from playback device to turn on display
+     * Perform the feature 'one touch play' from playback device to turn on display
      * and switch the input.
      *
      * @param callback {@link OneTouchPlayCallback} object to get informed
@@ -90,7 +90,7 @@ public final class HdmiPlaybackClient extends HdmiClient {
     }
 
     /**
-     * Gets the status of display device connected through HDMI bus.
+     * Get the status of display device connected through HDMI bus.
      *
      * @param callback {@link DisplayStatusCallback} object to get informed
      *         of the result

@@ -100,9 +100,6 @@ class TextLine {
         tl.mText = null;
         tl.mPaint = null;
         tl.mDirections = null;
-        tl.mSpanned = null;
-        tl.mTabs = null;
-        tl.mChars = null;
 
         tl.mMetricAffectingSpanSpanSet.recycle();
         tl.mCharacterStyleSpanSet.recycle();

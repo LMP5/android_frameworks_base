@@ -1262,10 +1262,6 @@ public class Allocation extends BaseObj {
 
     private void copyTo(Object array, Element.DataType dt, int arrayLen) {
         Trace.traceBegin(RenderScript.TRACE_TAG, "copyTo");
-        if (dt.mSize * arrayLen < mSize) {
-            throw new RSIllegalArgumentException(
-                "Size of output array cannot be smaller than size of allocation.");
-        }
         mRS.validate();
         mRS.nAllocationRead(getID(mRS), array, dt);
         Trace.traceEnd(RenderScript.TRACE_TAG);

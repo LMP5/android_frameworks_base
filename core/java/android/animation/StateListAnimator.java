@@ -16,7 +16,6 @@
 
 package android.animation;
 
-import android.content.res.ConstantState;
 import android.util.StateSet;
 import android.view.View;
 
@@ -45,31 +44,25 @@ import java.util.ArrayList;
  * @attr ref android.R.styleable#DrawableStates_state_pressed
  * @attr ref android.R.styleable#StateListAnimatorItem_animation
  */
-public class StateListAnimator implements Cloneable {
+public class StateListAnimator {
 
-    private ArrayList<Tuple> mTuples = new ArrayList<Tuple>();
+    private final ArrayList<Tuple> mTuples = new ArrayList<Tuple>();
+
     private Tuple mLastMatch = null;
+
     private Animator mRunningAnimator = null;
+
     private WeakReference<View> mViewRef;
-    private StateListAnimatorConstantState mConstantState;
-    private AnimatorListenerAdapter mAnimatorListener;
-    private int mChangingConfigurations;
 
-    public StateListAnimator() {
-        initAnimatorListener();
-    }
-
-    private void initAnimatorListener() {
-        mAnimatorListener = new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                animation.setTarget(null);
-                if (mRunningAnimator == animation) {
-                    mRunningAnimator = null;
-                }
+    private AnimatorListenerAdapter mAnimatorListener = new AnimatorListenerAdapter() {
+        @Override
+        public void onAnimationEnd(Animator animation) {
+            animation.setTarget(null);
+            if (mRunningAnimator == animation) {
+                mRunningAnimator = null;
             }
-        };
-    }
+        }
+    };
 
     /**
      * Associates the given animator with the provided drawable state specs so that it will be run
@@ -82,7 +75,6 @@ public class StateListAnimator implements Cloneable {
         Tuple tuple = new Tuple(specs, animator);
         tuple.mAnimator.addListener(mAnimatorListener);
         mTuples.add(tuple);
-        mChangingConfigurations |= animator.getChangingConfigurations();
     }
 
     /**
@@ -126,33 +118,10 @@ public class StateListAnimator implements Cloneable {
         for (int i = 0; i < size; i++) {
             mTuples.get(i).mAnimator.setTarget(null);
         }
+
         mViewRef = null;
         mLastMatch = null;
         mRunningAnimator = null;
-    }
-
-    @Override
-    public StateListAnimator clone() {
-        try {
-            StateListAnimator clone = (StateListAnimator) super.clone();
-            clone.mTuples = new ArrayList<Tuple>(mTuples.size());
-            clone.mLastMatch = null;
-            clone.mRunningAnimator = null;
-            clone.mViewRef = null;
-            clone.mAnimatorListener = null;
-            clone.initAnimatorListener();
-            final int tupleSize = mTuples.size();
-            for (int i = 0; i < tupleSize; i++) {
-                final Tuple tuple = mTuples.get(i);
-                final Animator animatorClone = tuple.mAnimator.clone();
-                animatorClone.removeListener(mAnimatorListener);
-                clone.addState(tuple.mSpecs, animatorClone);
-            }
-            clone.setChangingConfigurations(getChangingConfigurations());
-            return clone;
-        } catch (CloneNotSupportedException e) {
-            throw new AssertionError("cannot clone state list animator", e);
-        }
     }
 
     /**
@@ -213,63 +182,6 @@ public class StateListAnimator implements Cloneable {
     }
 
     /**
-     * Return a mask of the configuration parameters for which this animator may change, requiring
-     * that it be re-created.  The default implementation returns whatever was provided through
-     * {@link #setChangingConfigurations(int)} or 0 by default.
-     *
-     * @return Returns a mask of the changing configuration parameters, as defined by
-     * {@link android.content.pm.ActivityInfo}.
-     *
-     * @see android.content.pm.ActivityInfo
-     * @hide
-     */
-    public int getChangingConfigurations() {
-        return mChangingConfigurations;
-    }
-
-    /**
-     * Set a mask of the configuration parameters for which this animator may change, requiring
-     * that it should be recreated from resources instead of being cloned.
-     *
-     * @param configs A mask of the changing configuration parameters, as
-     * defined by {@link android.content.pm.ActivityInfo}.
-     *
-     * @see android.content.pm.ActivityInfo
-     * @hide
-     */
-    public void setChangingConfigurations(int configs) {
-        mChangingConfigurations = configs;
-    }
-
-    /**
-     * Sets the changing configurations value to the union of the current changing configurations
-     * and the provided configs.
-     * This method is called while loading the animator.
-     * @hide
-     */
-    public void appendChangingConfigurations(int configs) {
-        mChangingConfigurations |= configs;
-    }
-
-    /**
-     * Return a {@link android.content.res.ConstantState} instance that holds the shared state of
-     * this Animator.
-     * <p>
-     * This constant state is used to create new instances of this animator when needed. Default
-     * implementation creates a new {@link StateListAnimatorConstantState}. You can override this
-     * method to provide your custom logic or return null if you don't want this animator to be
-     * cached.
-     *
-     * @return The {@link android.content.res.ConstantState} associated to this Animator.
-     * @see android.content.res.ConstantState
-     * @see #clone()
-     * @hide
-     */
-    public ConstantState<StateListAnimator> createConstantState() {
-        return new StateListAnimatorConstantState(this);
-    }
-
-    /**
      * @hide
      */
     public static class Tuple {
@@ -295,38 +207,6 @@ public class StateListAnimator implements Cloneable {
          */
         public Animator getAnimator() {
             return mAnimator;
-        }
-    }
-
-    /**
-     * Creates a constant state which holds changing configurations information associated with the
-     * given Animator.
-     * <p>
-     * When new instance is called, default implementation clones the Animator.
-     */
-    private static class StateListAnimatorConstantState
-            extends ConstantState<StateListAnimator> {
-
-        final StateListAnimator mAnimator;
-
-        int mChangingConf;
-
-        public StateListAnimatorConstantState(StateListAnimator animator) {
-            mAnimator = animator;
-            mAnimator.mConstantState = this;
-            mChangingConf = mAnimator.getChangingConfigurations();
-        }
-
-        @Override
-        public int getChangingConfigurations() {
-            return mChangingConf;
-        }
-
-        @Override
-        public StateListAnimator newInstance() {
-            final StateListAnimator clone = mAnimator.clone();
-            clone.mConstantState = this;
-            return clone;
         }
     }
 }

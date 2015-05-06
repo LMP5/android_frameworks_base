@@ -1,6 +1,4 @@
 page.title=Adding Pages to a Notification
-page.tags=notifications
-helpoutsWidget=true
 
 @jd:body
 
@@ -59,14 +57,15 @@ Notification secondPageNotification =
         .setStyle(secondPageStyle)
         .build();
 
-// Extend the notification builder with the second page
-Notification notification = notificationBuilder
-        .extend(new NotificationCompat.WearableExtender()
-                .addPage(secondPageNotification))
-        .build();
+// Add second page with wearable extender and extend the main notification
+Notification twoPageNotification =
+        new WearableExtender()
+                .addPage(secondPageNotification)
+                .extend(notificationBuilder)
+                .build();
 
 // Issue the notification
 notificationManager =
         NotificationManagerCompat.from(this);
-notificationManager.notify(notificationId, notification);
+notificationManager.notify(notificationId, twoPageNotification);
 </pre>

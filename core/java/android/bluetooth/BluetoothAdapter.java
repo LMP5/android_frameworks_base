@@ -469,8 +469,7 @@ public final class BluetoothAdapter {
         if (getState() != STATE_ON) {
             return null;
         }
-        if (!isMultipleAdvertisementSupported() && !isPeripheralModeSupported()) {
-            Log.e(TAG, "bluetooth le advertising not supported");
+        if (!isMultipleAdvertisementSupported()) {
             return null;
         }
         synchronized(mLock) {
@@ -918,21 +917,6 @@ public final class BluetoothAdapter {
             return mService.isMultiAdvertisementSupported();
         } catch (RemoteException e) {
             Log.e(TAG, "failed to get isMultipleAdvertisementSupported, error: ", e);
-        }
-        return false;
-    }
-
-    /**
-     * Returns whether peripheral mode is supported.
-     *
-     * @hide
-     */
-    public boolean isPeripheralModeSupported() {
-        if (getState() != STATE_ON) return false;
-        try {
-            return mService.isPeripheralModeSupported();
-        } catch (RemoteException e) {
-            Log.e(TAG, "failed to get peripheral mode capability: ", e);
         }
         return false;
     }
@@ -1529,16 +1513,14 @@ public final class BluetoothAdapter {
                 if (VDBG) Log.d(TAG, "onBluetoothServiceUp: " + bluetoothService);
                 synchronized (mManagerCallback) {
                     mService = bluetoothService;
-                    synchronized (mProxyServiceStateCallbacks) {
-                        for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
-                            try {
-                                if (cb != null) {
-                                    cb.onBluetoothServiceUp(bluetoothService);
-                                } else {
-                                    Log.d(TAG, "onBluetoothServiceUp: cb is null!!!");
-                                }
-                            } catch (Exception e)  { Log.e(TAG,"",e);}
-                        }
+                    for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
+                        try {
+                            if (cb != null) {
+                                cb.onBluetoothServiceUp(bluetoothService);
+                            } else {
+                                Log.d(TAG, "onBluetoothServiceUp: cb is null!!!");
+                            }
+                        } catch (Exception e)  { Log.e(TAG,"",e);}
                     }
                 }
             }
@@ -1550,16 +1532,14 @@ public final class BluetoothAdapter {
                     if (mLeScanClients != null) mLeScanClients.clear();
                     if (sBluetoothLeAdvertiser != null) sBluetoothLeAdvertiser.cleanup();
                     if (sBluetoothLeScanner != null) sBluetoothLeScanner.cleanup();
-                    synchronized (mProxyServiceStateCallbacks) {
-                        for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
-                            try {
-                                if (cb != null) {
-                                    cb.onBluetoothServiceDown();
-                                } else {
-                                    Log.d(TAG, "onBluetoothServiceDown: cb is null!!!");
-                                }
-                            } catch (Exception e)  { Log.e(TAG,"",e);}
-                        }
+                    for (IBluetoothManagerCallback cb : mProxyServiceStateCallbacks ){
+                        try {
+                            if (cb != null) {
+                                cb.onBluetoothServiceDown();
+                            } else {
+                                Log.d(TAG, "onBluetoothServiceDown: cb is null!!!");
+                            }
+                        } catch (Exception e)  { Log.e(TAG,"",e);}
                     }
                 }
             }
@@ -1700,10 +1680,10 @@ public final class BluetoothAdapter {
             return mManagerService;
     }
 
-    final private ArrayList<IBluetoothManagerCallback> mProxyServiceStateCallbacks = new ArrayList<IBluetoothManagerCallback>();
+    private ArrayList<IBluetoothManagerCallback> mProxyServiceStateCallbacks = new ArrayList<IBluetoothManagerCallback>();
 
     /*package*/ IBluetooth getBluetoothService(IBluetoothManagerCallback cb) {
-        synchronized (mProxyServiceStateCallbacks) {
+        synchronized (mManagerCallback) {
             if (cb == null) {
                 Log.w(TAG, "getBluetoothService() called with no BluetoothManagerCallback");
             } else if (!mProxyServiceStateCallbacks.contains(cb)) {
@@ -1714,7 +1694,7 @@ public final class BluetoothAdapter {
     }
 
     /*package*/ void removeServiceStateCallback(IBluetoothManagerCallback cb) {
-        synchronized (mProxyServiceStateCallbacks) {
+        synchronized (mManagerCallback) {
             mProxyServiceStateCallbacks.remove(cb);
         }
     }

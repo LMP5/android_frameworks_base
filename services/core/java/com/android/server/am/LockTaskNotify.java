@@ -19,7 +19,6 @@ package com.android.server.am;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
-import android.view.WindowManager;
 import android.view.WindowManagerPolicy;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.Toast;
@@ -52,19 +51,21 @@ public class LockTaskNotify {
     }
 
     public void handleShowToast(boolean isLocked) {
-        final int textResId;
-        if (isLocked) {
-            textResId = R.string.lock_to_app_toast_locked;
-        } else if (mAccessibilityManager.isEnabled()) {
-            textResId = R.string.lock_to_app_toast_accessible;
-        } else {
-            textResId = mPolicy.hasNavigationBar()
-                    ? R.string.lock_to_app_toast : R.string.lock_to_app_toast_no_navbar;
+        String text = mContext.getString(isLocked
+                ? R.string.lock_to_app_toast_locked : R.string.lock_to_app_toast);
+        if (!isLocked) {
+            if (mAccessibilityManager.isEnabled()) {
+                text = mContext.getString(R.string.lock_to_app_toast_accessible);
+            }
+            if (!mPolicy.hasNavigationBar()) {
+                text = mContext.getString(R.string.lock_to_app_toast_no_navbar);
+            }
         }
         if (mLastToast != null) {
             mLastToast.cancel();
         }
-        mLastToast = makeAllUserToastAndShow(mContext.getString(textResId));
+        mLastToast = Toast.makeText(mContext, text, Toast.LENGTH_LONG);
+        mLastToast.show();
     }
 
     public void show(boolean starting) {
@@ -72,15 +73,7 @@ public class LockTaskNotify {
         if (starting) {
             showString = R.string.lock_to_app_start;
         }
-        makeAllUserToastAndShow(mContext.getString(showString));
-    }
-
-    private Toast makeAllUserToastAndShow(String text) {
-        Toast toast = Toast.makeText(mContext, text, Toast.LENGTH_LONG);
-        toast.getWindowParams().privateFlags |=
-                WindowManager.LayoutParams.PRIVATE_FLAG_SHOW_FOR_ALL_USERS;
-        toast.show();
-        return toast;
+        Toast.makeText(mContext, mContext.getString(showString), Toast.LENGTH_LONG).show();
     }
 
     private final class H extends Handler {

@@ -21,7 +21,6 @@ import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.content.res.Resources.Theme;
 import android.content.res.TypedArray;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Outline;
@@ -37,7 +36,6 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
-import java.util.Collection;
 
 /**
  * A Drawable that manages an array of other Drawables. These are drawn in array
@@ -102,10 +100,10 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
      * @param state The constant drawable state.
      */
     LayerDrawable(Drawable[] layers, LayerState state) {
-        this(state, null);
+        this(state, null, null);
+        int length = layers.length;
+        ChildDrawable[] r = new ChildDrawable[length];
 
-        final int length = layers.length;
-        final ChildDrawable[] r = new ChildDrawable[length];
         for (int i = 0; i < length; i++) {
             r[i] = new ChildDrawable();
             r[i].mDrawable = layers[i];
@@ -119,13 +117,17 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
     }
 
     LayerDrawable() {
-        this((LayerState) null, null);
+        this((LayerState) null, null, null);
     }
 
-    LayerDrawable(LayerState state, Resources res) {
-        mLayerState = createConstantState(state, res);
-        if (mLayerState.mNum > 0) {
+    LayerDrawable(LayerState state, Resources res, Theme theme) {
+        final LayerState as = createConstantState(state, res);
+        mLayerState = as;
+        if (as.mNum > 0) {
             ensurePadding();
+        }
+        if (theme != null && canApplyTheme()) {
+            applyTheme(theme);
         }
     }
 
@@ -254,8 +256,8 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
             a.recycle();
         }
 
-        final ChildDrawable[] array = state.mChildren;
-        final int N = state.mNum;
+        final ChildDrawable[] array = mLayerState.mChildren;
+        final int N = mLayerState.mNum;
         for (int i = 0; i < N; i++) {
             final ChildDrawable layer = array[i];
             if (layer.mThemeAttrs != null) {
@@ -277,7 +279,25 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
 
     @Override
     public boolean canApplyTheme() {
-        return (mLayerState != null && mLayerState.canApplyTheme()) || super.canApplyTheme();
+        final LayerState state = mLayerState;
+        if (state == null) {
+            return false;
+        }
+
+        if (state.mThemeAttrs != null) {
+            return true;
+        }
+
+        final ChildDrawable[] array = state.mChildren;
+        final int N = state.mNum;
+        for (int i = 0; i < N; i++) {
+            final ChildDrawable layer = array[i];
+            if (layer.mThemeAttrs != null || layer.mDrawable.canApplyTheme()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -920,19 +940,6 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
         return this;
     }
 
-    /**
-     * @hide
-     */
-    public void clearMutated() {
-        super.clearMutated();
-        final ChildDrawable[] array = mLayerState.mChildren;
-        final int N = mLayerState.mNum;
-        for (int i = 0; i < N; i++) {
-            array[i].mDrawable.clearMutated();
-        }
-        mMutated = false;
-    }
-
     /** @hide */
     @Override
     public void setLayoutDirection(int layoutDirection) {
@@ -1022,30 +1029,22 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
 
         @Override
         public boolean canApplyTheme() {
-            if (mThemeAttrs != null || super.canApplyTheme()) {
-                return true;
-            }
-
-            final ChildDrawable[] array = mChildren;
-            final int N = mNum;
-            for (int i = 0; i < N; i++) {
-                final ChildDrawable layer = array[i];
-                if (layer.mThemeAttrs != null || layer.mDrawable.canApplyTheme()) {
-                    return true;
-                }
-            }
-
-            return false;
+            return mThemeAttrs != null;
         }
 
         @Override
         public Drawable newDrawable() {
-            return new LayerDrawable(this, null);
+            return new LayerDrawable(this, null, null);
         }
 
         @Override
         public Drawable newDrawable(Resources res) {
-            return new LayerDrawable(this, res);
+            return new LayerDrawable(this, res, null);
+        }
+
+        @Override
+        public Drawable newDrawable(Resources res, Theme theme) {
+            return new LayerDrawable(this, res, theme);
         }
 
         @Override
@@ -1106,20 +1105,6 @@ public class LayerDrawable extends Drawable implements Drawable.Callback {
         public void invalidateCache() {
             mHaveOpacity = false;
             mHaveIsStateful = false;
-        }
-
-        @Override
-        public int addAtlasableBitmaps(Collection<Bitmap> atlasList) {
-            final ChildDrawable[] array = mChildren;
-            final int N = mNum;
-            int pixelCount = 0;
-            for (int i = 0; i < N; i++) {
-                final ConstantState state = array[i].mDrawable.getConstantState();
-                if (state != null) {
-                    pixelCount += state.addAtlasableBitmaps(atlasList);
-                }
-            }
-            return pixelCount;
         }
     }
 }

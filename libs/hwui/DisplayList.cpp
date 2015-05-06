@@ -39,28 +39,33 @@ DisplayListData::~DisplayListData() {
 }
 
 void DisplayListData::cleanupResources() {
-    ResourceCache& resourceCache = ResourceCache::getInstance();
-    resourceCache.lock();
+    Caches& caches = Caches::getInstance();
+    caches.unregisterFunctors(functors.size());
+    caches.resourceCache.lock();
 
     for (size_t i = 0; i < bitmapResources.size(); i++) {
-        resourceCache.decrementRefcountLocked(bitmapResources.itemAt(i));
+        caches.resourceCache.decrementRefcountLocked(bitmapResources.itemAt(i));
     }
 
     for (size_t i = 0; i < ownedBitmapResources.size(); i++) {
         const SkBitmap* bitmap = ownedBitmapResources.itemAt(i);
-        resourceCache.decrementRefcountLocked(bitmap);
-        resourceCache.destructorLocked(bitmap);
+        caches.resourceCache.decrementRefcountLocked(bitmap);
+        caches.resourceCache.destructorLocked(bitmap);
     }
 
     for (size_t i = 0; i < patchResources.size(); i++) {
-        resourceCache.decrementRefcountLocked(patchResources.itemAt(i));
+        caches.resourceCache.decrementRefcountLocked(patchResources.itemAt(i));
     }
 
     for (size_t i = 0; i < sourcePaths.size(); i++) {
-        resourceCache.decrementRefcountLocked(sourcePaths.itemAt(i));
+        caches.resourceCache.decrementRefcountLocked(sourcePaths.itemAt(i));
     }
 
-    resourceCache.unlock();
+    for (size_t i = 0; i < layers.size(); i++) {
+        caches.resourceCache.decrementRefcountLocked(layers.itemAt(i));
+    }
+
+    caches.resourceCache.unlock();
 
     for (size_t i = 0; i < paints.size(); i++) {
         delete paints.itemAt(i);
@@ -81,6 +86,7 @@ void DisplayListData::cleanupResources() {
     paints.clear();
     regions.clear();
     paths.clear();
+    layers.clear();
 }
 
 size_t DisplayListData::addChild(DrawRenderNodeOp* op) {

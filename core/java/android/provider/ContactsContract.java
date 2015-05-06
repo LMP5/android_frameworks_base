@@ -1112,14 +1112,20 @@ public final class ContactsContract {
     }
 
     /**
+     * @hide
+     */
+    public interface InternalContactCounts extends ContactCounts {
+        // Just a placeholder interface to don't break the public api, while expose ContactCounts
+        // for internal use
+    }
+
+    /**
      * URI parameter and cursor extras that return counts of rows grouped by the
      * address book index, which is usually the first letter of the sort key.
      * When this parameter is supplied, the row counts are returned in the
      * cursor extras bundle.
-     *
-     * @hide
      */
-    public interface ContactCounts {
+    interface ContactCounts {
 
         /**
          * Add this query parameter to a URI to get back row counts grouped by the address book

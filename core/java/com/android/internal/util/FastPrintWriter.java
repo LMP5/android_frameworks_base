@@ -15,7 +15,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 
 public class FastPrintWriter extends PrintWriter {
-    private static class DummyWriter extends Writer {
+    private static Writer sDummyWriter = new Writer() {
         @Override
         public void close() throws IOException {
             UnsupportedOperationException ex
@@ -100,7 +100,7 @@ public class FastPrintWriter extends PrintWriter {
      *             if {@code out} is {@code null}.
      */
     public FastPrintWriter(OutputStream out, boolean autoFlush, int bufferLen) {
-        super(new DummyWriter(), autoFlush);
+        super(sDummyWriter, autoFlush);
         if (out == null) {
             throw new NullPointerException("out is null");
         }
@@ -169,7 +169,7 @@ public class FastPrintWriter extends PrintWriter {
      *             if {@code wr} is {@code null}.
      */
     public FastPrintWriter(Writer wr, boolean autoFlush, int bufferLen) {
-        super(new DummyWriter(), autoFlush);
+        super(sDummyWriter, autoFlush);
         if (wr == null) {
             throw new NullPointerException("wr is null");
         }
@@ -212,7 +212,7 @@ public class FastPrintWriter extends PrintWriter {
      *             if {@code pr} is {@code null}.
      */
     public FastPrintWriter(Printer pr, int bufferLen) {
-        super(new DummyWriter(), true);
+        super(sDummyWriter, true);
         if (pr == null) {
             throw new NullPointerException("pr is null");
         }

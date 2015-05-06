@@ -12,9 +12,9 @@
 #include <utils/List.h>
 #include <utils/Errors.h>
 
-#include <cstdlib>
+#include <stdlib.h>
 #include <getopt.h>
-#include <cassert>
+#include <assert.h>
 #include <ctype.h>
 
 using namespace android;

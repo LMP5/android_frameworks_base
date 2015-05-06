@@ -74,7 +74,7 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
                         mRecorderAddress, mRecordSource);
                 break;
             default:
-                tv().announceTimerRecordingResult(mRecorderAddress,
+                tv().announceTimerRecordingResult(
                         TIMER_RECORDING_RESULT_EXTRA_FAIL_TO_RECORD_SELECTED_SOURCE);
                 finish();
                 return;
@@ -83,7 +83,7 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
             @Override
             public void onSendCompleted(int error) {
                 if (error != Constants.SEND_RESULT_SUCCESS) {
-                    tv().announceTimerRecordingResult(mRecorderAddress,
+                    tv().announceTimerRecordingResult(
                             TIMER_RECORDING_RESULT_EXTRA_CHECK_RECORDER_CONNECTION);
                     finish();
                     return;
@@ -96,8 +96,11 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
 
     @Override
     boolean processCommand(HdmiCecMessage cmd) {
-        if (mState != STATE_WAITING_FOR_TIMER_STATUS
-                || cmd.getSource() != mRecorderAddress) {
+        if (mState != STATE_WAITING_FOR_TIMER_STATUS) {
+            return false;
+        }
+
+        if (cmd.getSource() != mRecorderAddress) {
             return false;
         }
 
@@ -114,7 +117,7 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
         byte[] timerStatusData = cmd.getParams();
         // [Timer Status Data] should be one or three bytes.
         if (timerStatusData.length == 1 || timerStatusData.length == 3) {
-            tv().announceTimerRecordingResult(mRecorderAddress, bytesToInt(timerStatusData));
+            tv().announceTimerRecordingResult(bytesToInt(timerStatusData));
             Slog.i(TAG, "Received [Timer Status Data]:" + Arrays.toString(timerStatusData));
         } else {
             Slog.w(TAG, "Invalid [Timer Status Data]:" + Arrays.toString(timerStatusData));
@@ -138,8 +141,7 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
         }
         int reason = params[1] & 0xFF;
         Slog.i(TAG, "[Feature Abort] for " + messageType + " reason:" + reason);
-        tv().announceTimerRecordingResult(mRecorderAddress,
-                TIMER_RECORDING_RESULT_EXTRA_CHECK_RECORDER_CONNECTION);
+        tv().announceTimerRecordingResult(TIMER_RECORDING_RESULT_EXTRA_CHECK_RECORDER_CONNECTION);
         finish();
         return true;
     }
@@ -164,8 +166,7 @@ public class TimerRecordingAction extends HdmiCecFeatureAction {
             return;
         }
 
-        tv().announceTimerRecordingResult(mRecorderAddress,
-                TIMER_RECORDING_RESULT_EXTRA_CHECK_RECORDER_CONNECTION);
+        tv().announceTimerRecordingResult(TIMER_RECORDING_RESULT_EXTRA_CHECK_RECORDER_CONNECTION);
         finish();
     }
 }

@@ -141,12 +141,6 @@ SourcePos::printf(const char* fmt, ...) const
 }
 
 bool
-SourcePos::operator<(const SourcePos& rhs) const
-{
-    return (file < rhs.file) || (line < rhs.line);
-}
-
-bool
 SourcePos::hasErrors()
 {
     return g_errors.size() > 0;

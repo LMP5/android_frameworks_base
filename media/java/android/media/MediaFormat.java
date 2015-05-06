@@ -106,10 +106,6 @@ public final class MediaFormat {
     public static final String MIMETYPE_AUDIO_FLAC = "audio/flac";
     public static final String MIMETYPE_AUDIO_MSGSM = "audio/gsm";
     public static final String MIMETYPE_AUDIO_AC3 = "audio/ac3";
-    /**
-     * @hide
-     */
-    public static final String MIMETYPE_AUDIO_EAC3 = "audio/eac3";
 
     /**
      * MIME type for WebVTT subtitle data.
@@ -402,7 +398,7 @@ public final class MediaFormat {
      * The associated value is an integer.  These values are device and codec specific,
      * but lower values generally result in faster and/or less power-hungry encoding.
      *
-     * @see MediaCodecInfo.EncoderCapabilities#getComplexityRange()
+     * @see MediaCodecInfo.CodecCapabilities.EncoderCapabilities#getComplexityRange
      */
     public static final String KEY_COMPLEXITY = "complexity";
 
@@ -415,7 +411,7 @@ public final class MediaFormat {
      *
      * @hide
      *
-     * @see MediaCodecInfo.EncoderCapabilities#getQualityRange()
+     * @see MediaCodecInfo.CodecCapabilities.EncoderCapabilities#getQualityRange
      */
     public static final String KEY_QUALITY = "quality";
 
@@ -432,7 +428,7 @@ public final class MediaFormat {
      * A key describing the desired bitrate mode to be used by an encoder.
      * Constants are declared in {@link MediaCodecInfo.CodecCapabilities}.
      *
-     * @see MediaCodecInfo.EncoderCapabilities#isBitrateModeSupported(int)
+     * @see MediaCodecInfo.CodecCapabilities.EncoderCapabilities#isBitrateModeSupported
      */
     public static final String KEY_BITRATE_MODE = "bitrate-mode";
 

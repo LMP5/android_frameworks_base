@@ -23,7 +23,6 @@
 
 #include <private/hwui/DrawGlInfo.h>
 
-#include "AssetAtlas.h"
 #include "Caches.h"
 #include "utils/Macros.h"
 
@@ -53,11 +52,17 @@ public:
 
     void debugOverdraw(bool enable, bool clear);
 
-    void registerLayer(Layer* layer) {
+    void registerLayer(const Layer* layer) {
+        /*
+        AutoMutex _lock(mLayerLock);
         mActiveLayers.insert(layer);
+        */
     }
-    void unregisterLayer(Layer* layer) {
+    void unregisterLayer(const Layer* layer) {
+        /*
+        AutoMutex _lock(mLayerLock);
         mActiveLayers.erase(layer);
+        */
     }
 
     void registerCanvasContext(renderthread::CanvasContext* context) {
@@ -68,36 +73,24 @@ public:
         mRegisteredContexts.erase(context);
     }
 
-    void requireGLContext();
-
-    // TODO: This system is a little clunky feeling, this could use some
-    // more thinking...
-    void postDecStrong(VirtualLightRefBase* object);
-
-    AssetAtlas& assetAtlas() { return mAssetAtlas; }
-
 private:
     friend class renderthread::RenderThread;
     friend class Caches;
 
     void interruptForFunctorInvoke();
     void resumeFromFunctorInvoke();
-    void assertOnGLThread();
 
-    RenderState(renderthread::RenderThread& thread);
+    RenderState();
     ~RenderState();
 
-    renderthread::RenderThread& mRenderThread;
     Caches* mCaches;
-    AssetAtlas mAssetAtlas;
-    std::set<Layer*> mActiveLayers;
+    std::set<const Layer*> mActiveLayers;
     std::set<renderthread::CanvasContext*> mRegisteredContexts;
 
     GLsizei mViewportWidth;
     GLsizei mViewportHeight;
     GLuint mFramebuffer;
-
-    pthread_t mThreadId;
+    Mutex mLayerLock;
 };
 
 } /* namespace uirenderer */

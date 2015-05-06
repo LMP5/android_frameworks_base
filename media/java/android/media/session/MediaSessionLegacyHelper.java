@@ -69,9 +69,12 @@ public class MediaSessionLegacyHelper {
     }
 
     public static MediaSessionLegacyHelper getHelper(Context context) {
+        if (DEBUG) {
+            Log.d(TAG, "Attempting to get helper with context " + context);
+        }
         synchronized (sLock) {
             if (sInstance == null) {
-                sInstance = new MediaSessionLegacyHelper(context.getApplicationContext());
+                sInstance = new MediaSessionLegacyHelper(context);
             }
         }
         return sInstance;
@@ -187,7 +190,6 @@ public class MediaSessionLegacyHelper {
         boolean down = keyEvent.getAction() == KeyEvent.ACTION_DOWN;
         boolean up = keyEvent.getAction() == KeyEvent.ACTION_UP;
         int direction = 0;
-        boolean isMute = false;
         switch (keyEvent.getKeyCode()) {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 direction = AudioManager.ADJUST_RAISE;
@@ -196,11 +198,15 @@ public class MediaSessionLegacyHelper {
                 direction = AudioManager.ADJUST_LOWER;
                 break;
             case KeyEvent.KEYCODE_VOLUME_MUTE:
-                isMute = true;
+                // TODO
                 break;
         }
-        if (down || up) {
+        if ((down || up) && direction != 0) {
             int flags;
+            // If this is action up we want to send a beep for non-music events
+            if (up) {
+                direction = 0;
+            }
             if (musicOnly) {
                 // This flag is used when the screen is off to only affect
                 // active media
@@ -213,23 +219,9 @@ public class MediaSessionLegacyHelper {
                     flags = AudioManager.FLAG_SHOW_UI | AudioManager.FLAG_VIBRATE;
                 }
             }
-            if (direction != 0) {
-                // If this is action up we want to send a beep for non-music events
-                if (up) {
-                    direction = 0;
-                }
-                mSessionManager.dispatchAdjustVolume(AudioManager.USE_DEFAULT_STREAM_TYPE,
-                        direction, flags);
-            } else if (isMute) {
-                if (down) {
-                    // We need to send two volume events on down, one to mute
-                    // and one to show the UI
-                    mSessionManager.dispatchAdjustVolume(AudioManager.USE_DEFAULT_STREAM_TYPE,
-                            MediaSessionManager.DIRECTION_MUTE, flags);
-                }
-                mSessionManager.dispatchAdjustVolume(AudioManager.USE_DEFAULT_STREAM_TYPE,
-                        0 /* direction, causes UI to show on down */, flags);
-            }
+
+            mSessionManager.dispatchAdjustVolume(AudioManager.USE_DEFAULT_STREAM_TYPE,
+                    direction, flags);
         }
     }
 

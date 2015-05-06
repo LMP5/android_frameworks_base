@@ -48,7 +48,6 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
-import java.util.Collection;
 
 /**
  * A Drawable that wraps a bitmap and can be tiled, stretched, or aligned. You can create a
@@ -133,7 +132,7 @@ public class BitmapDrawable extends Drawable {
      */
     @Deprecated
     public BitmapDrawable(Bitmap bitmap) {
-        this(new BitmapState(bitmap), null);
+        this(new BitmapState(bitmap), null, null);
     }
 
     /**
@@ -141,7 +140,7 @@ public class BitmapDrawable extends Drawable {
      * the display metrics of the resources.
      */
     public BitmapDrawable(Resources res, Bitmap bitmap) {
-        this(new BitmapState(bitmap), res);
+        this(new BitmapState(bitmap), res, null);
         mBitmapState.mTargetDensity = mTargetDensity;
     }
 
@@ -152,7 +151,7 @@ public class BitmapDrawable extends Drawable {
      */
     @Deprecated
     public BitmapDrawable(String filepath) {
-        this(new BitmapState(BitmapFactory.decodeFile(filepath)), null);
+        this(new BitmapState(BitmapFactory.decodeFile(filepath)), null, null);
         if (mBitmapState.mBitmap == null) {
             android.util.Log.w("BitmapDrawable", "BitmapDrawable cannot decode " + filepath);
         }
@@ -163,7 +162,7 @@ public class BitmapDrawable extends Drawable {
      */
     @SuppressWarnings("unused")
     public BitmapDrawable(Resources res, String filepath) {
-        this(new BitmapState(BitmapFactory.decodeFile(filepath)), null);
+        this(new BitmapState(BitmapFactory.decodeFile(filepath)), null, null);
         mBitmapState.mTargetDensity = mTargetDensity;
         if (mBitmapState.mBitmap == null) {
             android.util.Log.w("BitmapDrawable", "BitmapDrawable cannot decode " + filepath);
@@ -177,7 +176,7 @@ public class BitmapDrawable extends Drawable {
      */
     @Deprecated
     public BitmapDrawable(java.io.InputStream is) {
-        this(new BitmapState(BitmapFactory.decodeStream(is)), null);
+        this(new BitmapState(BitmapFactory.decodeStream(is)), null, null);
         if (mBitmapState.mBitmap == null) {
             android.util.Log.w("BitmapDrawable", "BitmapDrawable cannot decode " + is);
         }
@@ -188,7 +187,7 @@ public class BitmapDrawable extends Drawable {
      */
     @SuppressWarnings("unused")
     public BitmapDrawable(Resources res, java.io.InputStream is) {
-        this(new BitmapState(BitmapFactory.decodeStream(is)), null);
+        this(new BitmapState(BitmapFactory.decodeStream(is)), null, null);
         mBitmapState.mTargetDensity = mTargetDensity;
         if (mBitmapState.mBitmap == null) {
             android.util.Log.w("BitmapDrawable", "BitmapDrawable cannot decode " + is);
@@ -685,14 +684,6 @@ public class BitmapDrawable extends Drawable {
         return this;
     }
 
-    /**
-     * @hide
-     */
-    public void clearMutated() {
-        super.clearMutated();
-        mMutated = false;
-    }
-
     @Override
     protected boolean onStateChange(int[] stateSet) {
         final BitmapState state = mBitmapState;
@@ -914,21 +905,23 @@ public class BitmapDrawable extends Drawable {
         }
 
         @Override
-        public int addAtlasableBitmaps(Collection<Bitmap> atlasList) {
-            if (isAtlasable(mBitmap) && atlasList.add(mBitmap)) {
-                return mBitmap.getWidth() * mBitmap.getHeight();
-            }
-            return 0;
+        public Bitmap getBitmap() {
+            return mBitmap;
         }
 
         @Override
         public Drawable newDrawable() {
-            return new BitmapDrawable(this, null);
+            return new BitmapDrawable(this, null, null);
         }
 
         @Override
         public Drawable newDrawable(Resources res) {
-            return new BitmapDrawable(this, res);
+            return new BitmapDrawable(this, res, null);
+        }
+
+        @Override
+        public Drawable newDrawable(Resources res, Theme theme) {
+            return new BitmapDrawable(this, res, theme);
         }
 
         @Override
@@ -941,10 +934,16 @@ public class BitmapDrawable extends Drawable {
      * The one constructor to rule them all. This is called by all public
      * constructors to set the state and initialize local properties.
      */
-    private BitmapDrawable(BitmapState state, Resources res) {
-        mBitmapState = state;
+    private BitmapDrawable(BitmapState state, Resources res, Theme theme) {
+        if (theme != null && state.canApplyTheme()) {
+            // If we need to apply a theme, implicitly mutate.
+            mBitmapState = new BitmapState(state);
+            applyTheme(theme);
+        } else {
+            mBitmapState = state;
+        }
 
-        initializeWithState(mBitmapState, res);
+        initializeWithState(state, res);
     }
 
     /**

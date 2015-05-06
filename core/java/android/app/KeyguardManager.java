@@ -16,14 +16,10 @@
 
 package android.app;
 
-import android.app.trust.ITrustManager;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.RemoteException;
 import android.os.IBinder;
-import android.os.ServiceManager;
-import android.os.UserHandle;
 import android.view.IWindowManager;
 import android.view.IOnKeyguardExitResult;
 import android.view.WindowManagerGlobal;
@@ -37,7 +33,6 @@ import android.view.WindowManagerGlobal;
  */
 public class KeyguardManager {
     private IWindowManager mWM;
-    private ITrustManager mTrustManager;
 
     /**
      * Intent used to prompt user for device credentials.
@@ -156,8 +151,6 @@ public class KeyguardManager {
 
     KeyguardManager() {
         mWM = WindowManagerGlobal.getWindowManagerService();
-        mTrustManager = ITrustManager.Stub.asInterface(
-                ServiceManager.getService(Context.TRUST_SERVICE));
     }
 
     /**
@@ -220,34 +213,6 @@ public class KeyguardManager {
         try {
             return mWM.inKeyguardRestrictedInputMode();
         } catch (RemoteException ex) {
-            return false;
-        }
-    }
-
-    /**
-     * Returns whether the device is currently locked and requires a PIN, pattern or
-     * password to unlock.
-     *
-     * @return true if unlocking the device currently requires a PIN, pattern or
-     * password.
-     */
-    public boolean isDeviceLocked() {
-        return isDeviceLocked(UserHandle.getCallingUserId());
-    }
-
-    /**
-     * Returns whether the device is currently locked and requires a PIN, pattern or
-     * password to unlock.
-     *
-     * @param userId the user for which the locked state should be reported.
-     * @return true if unlocking the device currently requires a PIN, pattern or
-     * password.
-     * @hide
-     */
-    public boolean isDeviceLocked(int userId) {
-        try {
-            return mTrustManager.isDeviceLocked(userId);
-        } catch (RemoteException e) {
             return false;
         }
     }

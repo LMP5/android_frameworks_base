@@ -19,7 +19,6 @@ package android.location;
 import com.android.internal.util.Preconditions;
 
 import android.annotation.NonNull;
-import android.content.Context;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -33,19 +32,17 @@ import java.util.HashSet;
  * @hide
  */
 abstract class LocalListenerHelper<TListener> {
-    private final HashSet<TListener> mListeners = new HashSet<>();
-
+    private final HashSet<TListener> mListeners = new HashSet<TListener>();
     private final String mTag;
-    private final Context mContext;
 
-    protected LocalListenerHelper(Context context, String name) {
+    protected LocalListenerHelper(String name) {
         Preconditions.checkNotNull(name);
-        mContext = context;
         mTag = name;
     }
 
     public boolean add(@NonNull TListener listener) {
         Preconditions.checkNotNull(listener);
+
         synchronized (mListeners) {
             // we need to register with the service first, because we need to find out if the
             // service will actually support the request before we attempt anything
@@ -62,15 +59,18 @@ abstract class LocalListenerHelper<TListener> {
                     return false;
                 }
             }
+
             if (mListeners.contains(listener)) {
                 return true;
             }
-            return mListeners.add(listener);
+            mListeners.add(listener);
         }
+        return true;
     }
 
     public void remove(@NonNull TListener listener) {
         Preconditions.checkNotNull(listener);
+
         synchronized (mListeners) {
             boolean removed = mListeners.remove(listener);
             boolean isLastRemoved = removed && mListeners.isEmpty();
@@ -78,7 +78,7 @@ abstract class LocalListenerHelper<TListener> {
                 try {
                     unregisterFromServer();
                 } catch (RemoteException e) {
-                    Log.v(mTag, "Error handling last listener removal", e);
+
                 }
             }
         }
@@ -91,15 +91,12 @@ abstract class LocalListenerHelper<TListener> {
         void execute(TListener listener) throws RemoteException;
     }
 
-    protected Context getContext() {
-        return mContext;
-    }
-
-    protected void foreach(ListenerOperation<TListener> operation) {
+    protected void foreach(ListenerOperation operation) {
         Collection<TListener> listeners;
         synchronized (mListeners) {
-            listeners = new ArrayList<>(mListeners);
+            listeners = new ArrayList<TListener>(mListeners);
         }
+
         for (TListener listener : listeners) {
             try {
                 operation.execute(listener);

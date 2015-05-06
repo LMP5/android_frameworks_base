@@ -133,7 +133,6 @@ public class TrustDrawable extends Drawable {
         if (!mAnimating) {
             mAnimating = true;
             updateState(true);
-            invalidateSelf();
         }
     }
 
@@ -147,21 +146,18 @@ public class TrustDrawable extends Drawable {
             mState = STATE_UNSET;
             mCurAlpha = 0;
             mCurInnerRadius = mInnerRadiusEnter;
-            invalidateSelf();
         }
     }
 
     public void setTrustManaged(boolean trustManaged) {
         if (trustManaged == mTrustManaged && mState != STATE_UNSET) return;
         mTrustManaged = trustManaged;
-        updateState(true);
+        if (mAnimating) {
+            updateState(true);
+        }
     }
 
-    private void updateState(boolean allowTransientState) {
-        if (!mAnimating) {
-            return;
-        }
-
+    private void updateState(boolean animate) {
         int nextState = mState;
         if (mState == STATE_UNSET) {
             nextState = mTrustManaged ? STATE_ENTERING : STATE_GONE;
@@ -174,7 +170,7 @@ public class TrustDrawable extends Drawable {
         } else if (mState == STATE_EXITING) {
             if (mTrustManaged) nextState = STATE_ENTERING;
         }
-        if (!allowTransientState) {
+        if (!animate) {
             if (nextState == STATE_ENTERING) nextState = STATE_VISIBLE;
             if (nextState == STATE_EXITING) nextState = STATE_GONE;
         }
@@ -204,8 +200,9 @@ public class TrustDrawable extends Drawable {
             mState = nextState;
             if (mCurAnimator != null) {
                 mCurAnimator.start();
+            } else {
+                invalidateSelf();
             }
-            invalidateSelf();
         }
     }
 

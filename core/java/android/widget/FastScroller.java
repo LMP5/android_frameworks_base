@@ -106,9 +106,6 @@ class FastScroller {
      */
     private final int[] mPreviewResId = new int[2];
 
-    /** The minimum touch target size in pixels. */
-    private final int mMinimumTouchTarget;
-
     /**
      * Padding in pixels around the preview text. Applied as layout margins to
      * the preview text and padding to the preview image.
@@ -256,9 +253,6 @@ class FastScroller {
 
         mPrimaryText = createPreviewTextView(context);
         mSecondaryText = createPreviewTextView(context);
-
-        mMinimumTouchTarget = listView.getResources().getDimensionPixelSize(
-                com.android.internal.R.dimen.fast_scroller_minimum_touch_target);
 
         setStyle(styleResId);
 
@@ -1200,37 +1194,17 @@ class FastScroller {
         return MathUtils.constrain((y - offset) / range, 0f, 1f);
     }
 
-    /**
-     * Calculates the thumb position based on the visible items.
-     *
-     * @param firstVisibleItem First visible item, >= 0.
-     * @param visibleItemCount Number of visible items, >= 0.
-     * @param totalItemCount Total number of items, >= 0.
-     * @return
-     */
     private float getPosFromItemCount(
             int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-        final SectionIndexer sectionIndexer = mSectionIndexer;
-        if (sectionIndexer == null || mListAdapter == null) {
+        if (mSectionIndexer == null || mListAdapter == null) {
             getSectionsFromIndexer();
         }
 
-        if (visibleItemCount == 0 || totalItemCount == 0) {
-            // No items are visible.
-            return 0;
-        }
-
-        final boolean hasSections = sectionIndexer != null && mSections != null
+        final boolean hasSections = mSectionIndexer != null && mSections != null
                 && mSections.length > 0;
         if (!hasSections || !mMatchDragPosition) {
-            if (visibleItemCount == totalItemCount) {
-                // All items are visible.
-                return 0;
-            } else {
-                return (float) firstVisibleItem / (totalItemCount - visibleItemCount);
-            }
+            return (float) firstVisibleItem / (totalItemCount - visibleItemCount);
         }
-
         // Ignore headers.
         firstVisibleItem -= mHeaderCount;
         if (firstVisibleItem < 0) {
@@ -1248,14 +1222,14 @@ class FastScroller {
         }
 
         // Number of rows in this section.
-        final int section = sectionIndexer.getSectionForPosition(firstVisibleItem);
-        final int sectionPos = sectionIndexer.getPositionForSection(section);
+        final int section = mSectionIndexer.getSectionForPosition(firstVisibleItem);
+        final int sectionPos = mSectionIndexer.getPositionForSection(section);
         final int sectionCount = mSections.length;
         final int positionsInSection;
         if (section < sectionCount - 1) {
             final int nextSectionPos;
             if (section + 1 < sectionCount) {
-                nextSectionPos = sectionIndexer.getPositionForSection(section + 1);
+                nextSectionPos = mSectionIndexer.getPositionForSection(section + 1);
             } else {
                 nextSectionPos = totalItemCount - 1;
             }
@@ -1480,18 +1454,10 @@ class FastScroller {
     }
 
     private boolean isPointInsideX(float x) {
-        final float offset = mThumbImage.getTranslationX();
-        final float left = mThumbImage.getLeft() + offset;
-        final float right = mThumbImage.getRight() + offset;
-
-        // Apply the minimum touch target size.
-        final float targetSizeDiff = mMinimumTouchTarget - (right - left);
-        final float adjust = targetSizeDiff > 0 ? targetSizeDiff : 0;
-
         if (mLayoutFromRight) {
-            return x >= mThumbImage.getLeft() - adjust;
+            return x >= mThumbImage.getLeft();
         } else {
-            return x <= mThumbImage.getRight() + adjust;
+            return x <= mThumbImage.getRight();
         }
     }
 
@@ -1499,12 +1465,7 @@ class FastScroller {
         final float offset = mThumbImage.getTranslationY();
         final float top = mThumbImage.getTop() + offset;
         final float bottom = mThumbImage.getBottom() + offset;
-
-        // Apply the minimum touch target size.
-        final float targetSizeDiff = mMinimumTouchTarget - (bottom - top);
-        final float adjust = targetSizeDiff > 0 ? targetSizeDiff / 2 : 0;
-
-        return y >= (top - adjust) && y <= (bottom + adjust);
+        return y >= top && y <= bottom;
     }
 
     /**

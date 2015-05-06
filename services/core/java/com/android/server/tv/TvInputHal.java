@@ -20,7 +20,6 @@ import android.media.tv.TvInputHardwareInfo;
 import android.media.tv.TvStreamConfig;
 import android.os.Handler;
 import android.os.Message;
-import android.os.MessageQueue;
 import android.util.Slog;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -54,9 +53,9 @@ final class TvInputHal implements Handler.Callback {
         public void onFirstFrameCaptured(int deviceId, int streamId);
     }
 
-    private native long nativeOpen(MessageQueue queue);
+    private native long nativeOpen();
 
-    private static native int nativeAddOrUpdateStream(long ptr, int deviceId, int streamId,
+    private static native int nativeAddStream(long ptr, int deviceId, int streamId,
             Surface surface);
     private static native int nativeRemoveStream(long ptr, int deviceId, int streamId);
     private static native TvStreamConfig[] nativeGetStreamConfigs(long ptr, int deviceId,
@@ -77,11 +76,11 @@ final class TvInputHal implements Handler.Callback {
 
     public void init() {
         synchronized (mLock) {
-            mPtr = nativeOpen(mHandler.getLooper().getQueue());
+            mPtr = nativeOpen();
         }
     }
 
-    public int addOrUpdateStream(int deviceId, Surface surface, TvStreamConfig streamConfig) {
+    public int addStream(int deviceId, Surface surface, TvStreamConfig streamConfig) {
         synchronized (mLock) {
             if (mPtr == 0) {
                 return ERROR_NO_INIT;
@@ -90,7 +89,7 @@ final class TvInputHal implements Handler.Callback {
             if (generation != streamConfig.getGeneration()) {
                 return ERROR_STALE_CONFIG;
             }
-            if (nativeAddOrUpdateStream(mPtr, deviceId, streamConfig.getStreamId(), surface) == 0) {
+            if (nativeAddStream(mPtr, deviceId, streamConfig.getStreamId(), surface) == 0) {
                 return SUCCESS;
             } else {
                 return ERROR_UNKNOWN;

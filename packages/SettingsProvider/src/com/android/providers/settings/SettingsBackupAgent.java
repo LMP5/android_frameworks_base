@@ -25,8 +25,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiConfiguration.KeyMgmt;
 import android.net.wifi.WifiManager;
 import android.os.FileUtils;
 import android.os.Handler;
@@ -35,12 +33,9 @@ import android.os.Process;
 import android.provider.Settings;
 import android.util.Log;
 
-import libcore.io.IoUtils;
-
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.CharArrayReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -53,15 +48,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.zip.CRC32;
 
 /**
@@ -147,7 +138,6 @@ public class SettingsBackupAgent extends BackupAgentHelper {
         String ssid = "";  // equals() and hashCode() need these to be non-null
         String key_mgmt = "";
         boolean certUsed = false;
-        boolean hasWepKey = false;
         final ArrayList<String> rawLines = new ArrayList<String>();
 
         public static Network readFromStream(BufferedReader in) {
@@ -174,9 +164,9 @@ public class SettingsBackupAgent extends BackupAgentHelper {
             rawLines.add(line);
 
             // remember the ssid and key_mgmt lines for duplicate culling
-            if (line.startsWith("ssid=")) {
+            if (line.startsWith("ssid")) {
                 ssid = line;
-            } else if (line.startsWith("key_mgmt=")) {
+            } else if (line.startsWith("key_mgmt")) {
                 key_mgmt = line;
             } else if (line.startsWith("client_cert=")) {
                 certUsed = true;
@@ -184,8 +174,6 @@ public class SettingsBackupAgent extends BackupAgentHelper {
                 certUsed = true;
             } else if (line.startsWith("ca_path=")) {
                 certUsed = true;
-            } else if (line.startsWith("wep_")) {
-                hasWepKey = true;
             }
         }
 
@@ -203,56 +191,6 @@ public class SettingsBackupAgent extends BackupAgentHelper {
                 Log.v(TAG, "   " + line);
             }
             Log.v(TAG, "}");
-        }
-
-        // Calculate the equivalent of WifiConfiguration's configKey()
-        public String configKey() {
-            if (ssid == null) {
-                // No SSID => malformed network definition
-                return null;
-            }
-
-            final String bareSsid = ssid.substring(ssid.indexOf('=') + 1);
-
-            final BitSet types = new BitSet();
-            if (key_mgmt == null) {
-                // no key_mgmt specified; this is defined as equivalent to "WPA-PSK WPA-EAP"
-                types.set(KeyMgmt.WPA_PSK);
-                types.set(KeyMgmt.WPA_EAP);
-            } else {
-                // Need to parse the key_mgmt line
-                final String bareKeyMgmt = key_mgmt.substring(key_mgmt.indexOf('=') + 1);
-                String[] typeStrings = bareKeyMgmt.split("\\s+");
-
-                // Parse out all the key management regimes permitted for this network.  The literal
-                // strings here are the standard values permitted in wpa_supplicant.conf.
-                for (int i = 0; i < typeStrings.length; i++) {
-                    final String ktype = typeStrings[i];
-                    if (ktype.equals("WPA-PSK")) {
-                        Log.v(TAG, "  + setting WPA_PSK bit");
-                        types.set(KeyMgmt.WPA_PSK);
-                    } else if (ktype.equals("WPA-EAP")) {
-                        Log.v(TAG, "  + setting WPA_EAP bit");
-                        types.set(KeyMgmt.WPA_EAP);
-                    } else if (ktype.equals("IEEE8021X")) {
-                        Log.v(TAG, "  + setting IEEE8021X bit");
-                        types.set(KeyMgmt.IEEE8021X);
-                    }
-                }
-            }
-
-            // Now build the canonical config key paralleling the WifiConfiguration semantics
-            final String key;
-            if (types.get(KeyMgmt.WPA_PSK)) {
-                key = bareSsid + KeyMgmt.strings[KeyMgmt.WPA_PSK];
-            } else if (types.get(KeyMgmt.WPA_EAP) || types.get(KeyMgmt.IEEE8021X)) {
-                key = bareSsid + KeyMgmt.strings[KeyMgmt.WPA_EAP];
-            } else if (hasWepKey) {
-                key = bareSsid + "WEP";  // hardcoded this way in WifiConfiguration
-            } else {
-                key = bareSsid + KeyMgmt.strings[KeyMgmt.NONE];
-            }
-            return key;
         }
 
         // Same approach as Pair.equals() and Pair.hashCode()
@@ -278,17 +216,6 @@ public class SettingsBackupAgent extends BackupAgentHelper {
         }
     }
 
-    boolean networkInWhitelist(Network net, List<WifiConfiguration> whitelist) {
-        final String netConfigKey = net.configKey();
-        final int N = whitelist.size();
-        for (int i = 0; i < N; i++) {
-            if (Objects.equals(netConfigKey, whitelist.get(i).configKey(true))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // Ingest multiple wifi config file fragments, looking for network={} blocks
     // and eliminating duplicates
     class WifiNetworkSettings {
@@ -296,7 +223,7 @@ public class SettingsBackupAgent extends BackupAgentHelper {
         final HashSet<Network> mKnownNetworks = new HashSet<Network>();
         final ArrayList<Network> mNetworks = new ArrayList<Network>(8);
 
-        public void readNetworks(BufferedReader in, List<WifiConfiguration> whitelist) {
+        public void readNetworks(BufferedReader in) {
             try {
                 String line;
                 while (in.ready()) {
@@ -305,15 +232,6 @@ public class SettingsBackupAgent extends BackupAgentHelper {
                         // Parse out 'network=' decls so we can ignore duplicates
                         if (line.startsWith("network")) {
                             Network net = Network.readFromStream(in);
-                            if (whitelist != null) {
-                                if (!networkInWhitelist(net, whitelist)) {
-                                    if (DEBUG_BACKUP) {
-                                        Log.v(TAG, "Network not in whitelist, skipping: "
-                                                + net.ssid + " / " + net.key_mgmt);
-                                    }
-                                    continue;
-                                }
-                            }
                             if (! mKnownNetworks.contains(net)) {
                                 if (DEBUG_BACKUP) {
                                     Log.v(TAG, "Adding " + net.ssid + " / " + net.key_mgmt);
@@ -926,24 +844,24 @@ public class SettingsBackupAgent extends BackupAgentHelper {
         BufferedReader br = null;
         try {
             File file = new File(filename);
-            if (!file.exists()) {
-                return EMPTY_DATA;
-            }
-
-            WifiManager wifi = (WifiManager) getSystemService(WIFI_SERVICE);
-            List<WifiConfiguration> configs = wifi.getConfiguredNetworks();
-
-            WifiNetworkSettings fromFile = new WifiNetworkSettings();
-            br = new BufferedReader(new FileReader(file));
-            fromFile.readNetworks(br, configs);
-
-            // Write the parsed networks into a packed byte array
-            if (fromFile.mKnownNetworks.size() > 0) {
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                OutputStreamWriter out = new OutputStreamWriter(bos);
-                fromFile.write(out);
-                out.flush();
-                return bos.toByteArray();
+            if (file.exists()) {
+                br = new BufferedReader(new FileReader(file));
+                StringBuffer relevantLines = new StringBuffer();
+                boolean started = false;
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (!started && line.startsWith("network")) {
+                        started = true;
+                    }
+                    if (started) {
+                        relevantLines.append(line).append("\n");
+                    }
+                }
+                if (relevantLines.length() > 0) {
+                    return relevantLines.toString().getBytes();
+                } else {
+                    return EMPTY_DATA;
+                }
             } else {
                 return EMPTY_DATA;
             }
@@ -951,7 +869,12 @@ public class SettingsBackupAgent extends BackupAgentHelper {
             Log.w(TAG, "Couldn't backup " + filename);
             return EMPTY_DATA;
         } finally {
-            IoUtils.closeQuietly(br);
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                }
+            }
         }
     }
 
@@ -963,7 +886,7 @@ public class SettingsBackupAgent extends BackupAgentHelper {
             if (supplicantFile.exists()) {
                 // Retain the existing APs; we'll append the restored ones to them
                 BufferedReader in = new BufferedReader(new FileReader(FILE_WIFI_SUPPLICANT));
-                supplicantImage.readNetworks(in, null);
+                supplicantImage.readNetworks(in);
                 in.close();
 
                 supplicantFile.delete();
@@ -974,7 +897,7 @@ public class SettingsBackupAgent extends BackupAgentHelper {
                 char[] restoredAsBytes = new char[size];
                 for (int i = 0; i < size; i++) restoredAsBytes[i] = (char) bytes[i];
                 BufferedReader in = new BufferedReader(new CharArrayReader(restoredAsBytes));
-                supplicantImage.readNetworks(in, null);
+                supplicantImage.readNetworks(in);
 
                 if (DEBUG_BACKUP) {
                     Log.v(TAG, "Final AP list:");

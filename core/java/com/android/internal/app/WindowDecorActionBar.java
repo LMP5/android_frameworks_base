@@ -496,7 +496,7 @@ public class WindowDecorActionBar extends ActionBar implements
 
         mOverlayLayout.setHideOnContentScrollEnabled(false);
         mContextView.killMode();
-        ActionModeImpl mode = new ActionModeImpl(mContextView.getContext(), callback);
+        ActionModeImpl mode = new ActionModeImpl(callback);
         if (mode.dispatchOnCreate()) {
             mode.invalidate();
             mContextView.initForMode(mode);
@@ -876,7 +876,7 @@ public class WindowDecorActionBar extends ActionBar implements
             currentTheme.resolveAttribute(com.android.internal.R.attr.actionBarWidgetTheme,
                     outValue, true);
             final int targetThemeRes = outValue.resourceId;
-
+            
             if (targetThemeRes != 0 && mContext.getThemeResId() != targetThemeRes) {
                 mThemedContext = new ContextThemeWrapper(mContext, targetThemeRes);
             } else {
@@ -885,7 +885,7 @@ public class WindowDecorActionBar extends ActionBar implements
         }
         return mThemedContext;
     }
-
+    
     @Override
     public boolean isTitleTruncated() {
         return mDecorToolbar != null && mDecorToolbar.isTitleTruncated();
@@ -933,26 +933,23 @@ public class WindowDecorActionBar extends ActionBar implements
     }
 
     /**
-     * @hide
+     * @hide 
      */
     public class ActionModeImpl extends ActionMode implements MenuBuilder.Callback {
-        private final Context mActionModeContext;
-        private final MenuBuilder mMenu;
-
         private ActionMode.Callback mCallback;
+        private MenuBuilder mMenu;
         private WeakReference<View> mCustomView;
-
-        public ActionModeImpl(Context context, ActionMode.Callback callback) {
-            mActionModeContext = context;
+        
+        public ActionModeImpl(ActionMode.Callback callback) {
             mCallback = callback;
-            mMenu = new MenuBuilder(context)
+            mMenu = new MenuBuilder(getThemedContext())
                     .setDefaultShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
             mMenu.setCallback(this);
         }
 
         @Override
         public MenuInflater getMenuInflater() {
-            return new MenuInflater(mActionModeContext);
+            return new MenuInflater(getThemedContext());
         }
 
         @Override
@@ -993,13 +990,6 @@ public class WindowDecorActionBar extends ActionBar implements
 
         @Override
         public void invalidate() {
-            if (mActionMode != this) {
-                // Not the active action mode - no-op. It's possible we are
-                // currently deferring onDestroy, so the app doesn't yet know we
-                // are going away and is trying to use us. That's also a no-op.
-                return;
-            }
-
             mMenu.stopDispatchingItemsChanged();
             try {
                 mCallback.onPrepareActionMode(this, mMenu);
@@ -1052,7 +1042,7 @@ public class WindowDecorActionBar extends ActionBar implements
         public CharSequence getSubtitle() {
             return mContextView.getSubtitle();
         }
-
+        
         @Override
         public void setTitleOptionalHint(boolean titleOptional) {
             super.setTitleOptionalHint(titleOptional);

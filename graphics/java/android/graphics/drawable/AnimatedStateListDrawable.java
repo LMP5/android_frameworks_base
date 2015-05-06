@@ -139,21 +139,27 @@ public class AnimatedStateListDrawable extends StateListDrawable {
 
     @Override
     protected boolean onStateChange(int[] stateSet) {
-        // If we're not already at the target index, either attempt to find a
-        // valid transition to it or jump directly there.
-        final int targetIndex = mState.indexOfKeyframe(stateSet);
-        boolean changed = targetIndex != getCurrentIndex()
-                && (selectTransition(targetIndex) || selectDrawable(targetIndex));
-
-        // We need to propagate the state change to the current drawable, but
-        // we can't call StateListDrawable.onStateChange() without changing the
-        // current drawable.
-        final Drawable current = getCurrent();
-        if (current != null) {
-            changed |= current.setState(stateSet);
+        final int keyframeIndex = mState.indexOfKeyframe(stateSet);
+        if (keyframeIndex == getCurrentIndex()) {
+            // Propagate state change to current keyframe.
+            final Drawable current = getCurrent();
+            if (current != null) {
+                return current.setState(stateSet);
+            }
+            return false;
         }
 
-        return changed;
+        // Attempt to find a valid transition to the keyframe.
+        if (selectTransition(keyframeIndex)) {
+            return true;
+        }
+
+        // No valid transition, attempt to jump directly to the keyframe.
+        if (selectDrawable(keyframeIndex)) {
+            return true;
+        }
+
+        return super.onStateChange(stateSet);
     }
 
     private boolean selectTransition(int toIndex) {
@@ -199,8 +205,6 @@ public class AnimatedStateListDrawable extends StateListDrawable {
             return false;
         }
 
-        boolean hasReversibleFlag = state.transitionHasReversibleFlag(fromId, toId);
-
         // This may fail if we're already on the transition, but that's okay!
         selectDrawable(transitionIndex);
 
@@ -208,14 +212,10 @@ public class AnimatedStateListDrawable extends StateListDrawable {
         final Drawable d = getCurrent();
         if (d instanceof AnimationDrawable) {
             final boolean reversed = state.isTransitionReversed(fromId, toId);
-
-            transition = new AnimationDrawableTransition((AnimationDrawable) d,
-                    reversed, hasReversibleFlag);
+            transition = new AnimationDrawableTransition((AnimationDrawable) d, reversed);
         } else if (d instanceof AnimatedVectorDrawable) {
             final boolean reversed = state.isTransitionReversed(fromId, toId);
-
-            transition = new AnimatedVectorDrawableTransition((AnimatedVectorDrawable) d,
-                    reversed, hasReversibleFlag);
+            transition = new AnimatedVectorDrawableTransition((AnimatedVectorDrawable) d, reversed);
         } else if (d instanceof Animatable) {
             transition = new AnimatableTransition((Animatable) d);
         } else {
@@ -266,12 +266,7 @@ public class AnimatedStateListDrawable extends StateListDrawable {
     private static class AnimationDrawableTransition  extends Transition {
         private final ObjectAnimator mAnim;
 
-        // Even AnimationDrawable is always reversible technically, but
-        // we should obey the XML's android:reversible flag.
-        private final boolean mHasReversibleFlag;
-
-        public AnimationDrawableTransition(AnimationDrawable ad,
-                boolean reversed, boolean hasReversibleFlag) {
+        public AnimationDrawableTransition(AnimationDrawable ad, boolean reversed) {
             final int frameCount = ad.getNumberOfFrames();
             final int fromFrame = reversed ? frameCount - 1 : 0;
             final int toFrame = reversed ? 0 : frameCount - 1;
@@ -280,13 +275,13 @@ public class AnimatedStateListDrawable extends StateListDrawable {
             anim.setAutoCancel(true);
             anim.setDuration(interp.getTotalDuration());
             anim.setInterpolator(interp);
-            mHasReversibleFlag = hasReversibleFlag;
+
             mAnim = anim;
         }
 
         @Override
         public boolean canReverse() {
-            return mHasReversibleFlag;
+            return true;
         }
 
         @Override
@@ -307,28 +302,16 @@ public class AnimatedStateListDrawable extends StateListDrawable {
 
     private static class AnimatedVectorDrawableTransition  extends Transition {
         private final AnimatedVectorDrawable mAvd;
-
-        // mReversed is indicating the current transition's direction.
         private final boolean mReversed;
 
-        // mHasReversibleFlag is indicating whether the whole transition has
-        // reversible flag set to true.
-        // If mHasReversibleFlag is false, then mReversed is always false.
-        private final boolean mHasReversibleFlag;
-
-        public AnimatedVectorDrawableTransition(AnimatedVectorDrawable avd,
-                boolean reversed, boolean hasReversibleFlag) {
+        public AnimatedVectorDrawableTransition(AnimatedVectorDrawable avd, boolean reversed) {
             mAvd = avd;
             mReversed = reversed;
-            mHasReversibleFlag = hasReversibleFlag;
         }
 
         @Override
         public boolean canReverse() {
-            // When the transition's XML says it is not reversible, then we obey
-            // it, even if the AVD itself is reversible.
-            // This will help the single direction transition.
-            return mAvd.canReverse() && mHasReversibleFlag;
+            return mAvd.canReverse();
         }
 
         @Override
@@ -345,8 +328,7 @@ public class AnimatedStateListDrawable extends StateListDrawable {
             if (canReverse()) {
                 mAvd.reverse();
             } else {
-                Log.w(LOGTAG, "Can't reverse, either the reversible is set to false,"
-                        + " or the AnimatedVectorDrawable can't reverse");
+                Log.w(LOGTAG, "Reverse() is called on a drawable can't reverse");
             }
         }
 
@@ -377,62 +359,24 @@ public class AnimatedStateListDrawable extends StateListDrawable {
             throws XmlPullParserException, IOException {
         final TypedArray a = obtainAttributes(
                 r, theme, attrs, R.styleable.AnimatedStateListDrawable);
+
         super.inflateWithAttributes(r, parser, a, R.styleable.AnimatedStateListDrawable_visible);
-        updateStateFromTypedArray(a);
+
+        final StateListState stateListState = getStateListState();
+        stateListState.setVariablePadding(a.getBoolean(
+                R.styleable.AnimatedStateListDrawable_variablePadding, false));
+        stateListState.setConstantSize(a.getBoolean(
+                R.styleable.AnimatedStateListDrawable_constantSize, false));
+        stateListState.setEnterFadeDuration(a.getInt(
+                R.styleable.AnimatedStateListDrawable_enterFadeDuration, 0));
+        stateListState.setExitFadeDuration(a.getInt(
+                R.styleable.AnimatedStateListDrawable_exitFadeDuration, 0));
+
+        setDither(a.getBoolean(R.styleable.AnimatedStateListDrawable_dither, true));
+        setAutoMirrored(a.getBoolean(R.styleable.AnimatedStateListDrawable_autoMirrored, false));
+
         a.recycle();
 
-        inflateChildElements(r, parser, attrs, theme);
-
-        init();
-    }
-
-    @Override
-    public void applyTheme(@Nullable Theme theme) {
-        super.applyTheme(theme);
-
-        final AnimatedStateListState state = mState;
-        if (state == null || state.mAnimThemeAttrs == null) {
-            return;
-        }
-
-        final TypedArray a = theme.resolveAttributes(
-                state.mAnimThemeAttrs, R.styleable.AnimatedRotateDrawable);
-        updateStateFromTypedArray(a);
-        a.recycle();
-
-        init();
-    }
-
-    private void updateStateFromTypedArray(TypedArray a) {
-        final AnimatedStateListState state = mState;
-
-        // Account for any configuration changes.
-        state.mChangingConfigurations |= a.getChangingConfigurations();
-
-        // Extract the theme attributes, if any.
-        state.mAnimThemeAttrs = a.extractThemeAttrs();
-
-        state.setVariablePadding(a.getBoolean(
-                R.styleable.AnimatedStateListDrawable_variablePadding, state.mVariablePadding));
-        state.setConstantSize(a.getBoolean(
-                R.styleable.AnimatedStateListDrawable_constantSize, state.mConstantSize));
-        state.setEnterFadeDuration(a.getInt(
-                R.styleable.AnimatedStateListDrawable_enterFadeDuration, state.mEnterFadeDuration));
-        state.setExitFadeDuration(a.getInt(
-                R.styleable.AnimatedStateListDrawable_exitFadeDuration, state.mExitFadeDuration));
-
-        setDither(a.getBoolean(
-                R.styleable.AnimatedStateListDrawable_dither, state.mDither));
-        setAutoMirrored(a.getBoolean(
-                R.styleable.AnimatedStateListDrawable_autoMirrored, state.mAutoMirrored));
-    }
-
-    private void init() {
-        onStateChange(getState());
-    }
-
-    private void inflateChildElements(Resources r, XmlPullParser parser, AttributeSet attrs,
-            Theme theme) throws XmlPullParserException, IOException {
         int type;
 
         final int innerDepth = parser.getDepth() + 1;
@@ -454,36 +398,50 @@ public class AnimatedStateListDrawable extends StateListDrawable {
                 parseTransition(r, parser, attrs, theme);
             }
         }
+
+        onStateChange(getState());
     }
 
     private int parseTransition(@NonNull Resources r, @NonNull XmlPullParser parser,
             @NonNull AttributeSet attrs, @Nullable Theme theme)
             throws XmlPullParserException, IOException {
-        // This allows state list drawable item elements to be themed at
-        // inflation time but does NOT make them work for Zygote preload.
-        final TypedArray a = obtainAttributes(r, theme, attrs,
-                R.styleable.AnimatedStateListDrawableTransition);
-        final int fromId = a.getResourceId(
-                R.styleable.AnimatedStateListDrawableTransition_fromId, 0);
-        final int toId = a.getResourceId(
-                R.styleable.AnimatedStateListDrawableTransition_toId, 0);
-        final boolean reversible = a.getBoolean(
-                R.styleable.AnimatedStateListDrawableTransition_reversible, false);
-        Drawable dr = a.getDrawable(
-                R.styleable.AnimatedStateListDrawableTransition_drawable);
-        a.recycle();
+        int drawableRes = 0;
+        int fromId = 0;
+        int toId = 0;
+        boolean reversible = false;
 
-        // Loading child elements modifies the state of the AttributeSet's
-        // underlying parser, so it needs to happen after obtaining
-        // attributes and extracting states.
-        if (dr == null) {
+        final int numAttrs = attrs.getAttributeCount();
+        for (int i = 0; i < numAttrs; i++) {
+            final int stateResId = attrs.getAttributeNameResource(i);
+            switch (stateResId) {
+                case 0:
+                    break;
+                case R.attr.fromId:
+                    fromId = attrs.getAttributeResourceValue(i, 0);
+                    break;
+                case R.attr.toId:
+                    toId = attrs.getAttributeResourceValue(i, 0);
+                    break;
+                case R.attr.drawable:
+                    drawableRes = attrs.getAttributeResourceValue(i, 0);
+                    break;
+                case R.attr.reversible:
+                    reversible = attrs.getAttributeBooleanValue(i, false);
+                    break;
+            }
+        }
+
+        final Drawable dr;
+        if (drawableRes != 0) {
+            dr = r.getDrawable(drawableRes, theme);
+        } else {
             int type;
             while ((type = parser.next()) == XmlPullParser.TEXT) {
             }
             if (type != XmlPullParser.START_TAG) {
                 throw new XmlPullParserException(
                         parser.getPositionDescription()
-                                + ": <transition> tag requires a 'drawable' attribute or "
+                                + ": <item> tag requires a 'drawable' attribute or "
                                 + "child tag defining a drawable");
             }
             dr = Drawable.createFromXmlInner(r, parser, attrs, theme);
@@ -495,20 +453,34 @@ public class AnimatedStateListDrawable extends StateListDrawable {
     private int parseItem(@NonNull Resources r, @NonNull XmlPullParser parser,
             @NonNull AttributeSet attrs, @Nullable Theme theme)
             throws XmlPullParserException, IOException {
-        // This allows state list drawable item elements to be themed at
-        // inflation time but does NOT make them work for Zygote preload.
-        final TypedArray a = obtainAttributes(r, theme, attrs,
-                R.styleable.AnimatedStateListDrawableItem);
-        final int keyframeId = a.getResourceId(R.styleable.AnimatedStateListDrawableItem_id, 0);
-        Drawable dr = a.getDrawable(R.styleable.AnimatedStateListDrawableItem_drawable);
-        a.recycle();
+        int drawableRes = 0;
+        int keyframeId = 0;
 
-        final int[] states = extractStateSet(attrs);
+        int j = 0;
+        final int numAttrs = attrs.getAttributeCount();
+        int[] states = new int[numAttrs];
+        for (int i = 0; i < numAttrs; i++) {
+            final int stateResId = attrs.getAttributeNameResource(i);
+            switch (stateResId) {
+                case 0:
+                    break;
+                case R.attr.id:
+                    keyframeId = attrs.getAttributeResourceValue(i, 0);
+                    break;
+                case R.attr.drawable:
+                    drawableRes = attrs.getAttributeResourceValue(i, 0);
+                    break;
+                default:
+                    final boolean hasState = attrs.getAttributeBooleanValue(i, false);
+                    states[j++] = hasState ? stateResId : -stateResId;
+            }
+        }
+        states = StateSet.trimStateSet(states, j);
 
-        // Loading child elements modifies the state of the AttributeSet's
-        // underlying parser, so it needs to happen after obtaining
-        // attributes and extracting states.
-        if (dr == null) {
+        final Drawable dr;
+        if (drawableRes != 0) {
+            dr = r.getDrawable(drawableRes, theme);
+        } else {
             int type;
             while ((type = parser.next()) == XmlPullParser.TEXT) {
             }
@@ -527,71 +499,42 @@ public class AnimatedStateListDrawable extends StateListDrawable {
     @Override
     public Drawable mutate() {
         if (!mMutated && super.mutate() == this) {
-            mState.mutate();
+            final AnimatedStateListState newState = new AnimatedStateListState(mState, this, null);
+            setConstantState(newState);
             mMutated = true;
         }
 
         return this;
     }
 
-    @Override
-    AnimatedStateListState cloneConstantState() {
-        return new AnimatedStateListState(mState, this, null);
-    }
-
-    /**
-     * @hide
-     */
-    public void clearMutated() {
-        super.clearMutated();
-        mMutated = false;
-    }
-
     static class AnimatedStateListState extends StateListState {
-        // REVERSED_BIT is indicating the current transition's direction.
-        private static final long REVERSED_BIT = 0x100000000l;
+        private static final int REVERSE_SHIFT = 32;
+        private static final int REVERSE_MASK = 0x1;
 
-        // REVERSIBLE_FLAG_BIT is indicating whether the whole transition has
-        // reversible flag set to true.
-        private static final long REVERSIBLE_FLAG_BIT = 0x200000000l;
-
-        int[] mAnimThemeAttrs;
-
-        LongSparseLongArray mTransitions;
-        SparseIntArray mStateIds;
+        final LongSparseLongArray mTransitions;
+        final SparseIntArray mStateIds;
 
         AnimatedStateListState(@Nullable AnimatedStateListState orig,
                 @NonNull AnimatedStateListDrawable owner, @Nullable Resources res) {
             super(orig, owner, res);
 
             if (orig != null) {
-                // Perform a shallow copy and rely on mutate() to deep-copy.
-                mAnimThemeAttrs = orig.mAnimThemeAttrs;
-                mTransitions = orig.mTransitions;
-                mStateIds = orig.mStateIds;
+                mTransitions = orig.mTransitions.clone();
+                mStateIds = orig.mStateIds.clone();
             } else {
                 mTransitions = new LongSparseLongArray();
                 mStateIds = new SparseIntArray();
             }
         }
 
-        private void mutate() {
-            mTransitions = mTransitions.clone();
-            mStateIds = mStateIds.clone();
-        }
-
         int addTransition(int fromId, int toId, @NonNull Drawable anim, boolean reversible) {
             final int pos = super.addChild(anim);
             final long keyFromTo = generateTransitionKey(fromId, toId);
-            long reversibleBit = 0;
-            if (reversible) {
-                reversibleBit = REVERSIBLE_FLAG_BIT;
-            }
-            mTransitions.append(keyFromTo, pos | reversibleBit);
+            mTransitions.append(keyFromTo, pos);
 
             if (reversible) {
                 final long keyToFrom = generateTransitionKey(toId, fromId);
-                mTransitions.append(keyToFrom, pos | REVERSED_BIT | reversibleBit);
+                mTransitions.append(keyToFrom, pos | (1L << REVERSE_SHIFT));
             }
 
             return addChild(anim);
@@ -623,17 +566,7 @@ public class AnimatedStateListDrawable extends StateListDrawable {
 
         boolean isTransitionReversed(int fromId, int toId) {
             final long keyFromTo = generateTransitionKey(fromId, toId);
-            return (mTransitions.get(keyFromTo, -1) & REVERSED_BIT) != 0;
-        }
-
-        boolean transitionHasReversibleFlag(int fromId, int toId) {
-            final long keyFromTo = generateTransitionKey(fromId, toId);
-            return (mTransitions.get(keyFromTo, -1) & REVERSIBLE_FLAG_BIT) != 0;
-        }
-
-        @Override
-        public boolean canApplyTheme() {
-            return mAnimThemeAttrs != null || super.canApplyTheme();
+            return (mTransitions.get(keyFromTo, -1) >> REVERSE_SHIFT & REVERSE_MASK) == 1;
         }
 
         @Override
@@ -651,19 +584,15 @@ public class AnimatedStateListDrawable extends StateListDrawable {
         }
     }
 
-    @Override
-    protected void setConstantState(@NonNull DrawableContainerState state) {
+    void setConstantState(@NonNull AnimatedStateListState state) {
         super.setConstantState(state);
 
-        if (state instanceof AnimatedStateListState) {
-            mState = (AnimatedStateListState) state;
-        }
+        mState = state;
     }
 
     private AnimatedStateListDrawable(@Nullable AnimatedStateListState state, @Nullable Resources res) {
         super(null);
 
-        // Every animated state list drawable has its own constant state.
         final AnimatedStateListState newState = new AnimatedStateListState(state, this, res);
         setConstantState(newState);
         onStateChange(getState());

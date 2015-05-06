@@ -23,5 +23,4 @@ public interface StatusBarManagerInternal {
     void buzzBeepBlinked();
     void notificationLightPulse(int argb, int onMillis, int offMillis);
     void notificationLightOff();
-    void showScreenPinningRequest();
 }

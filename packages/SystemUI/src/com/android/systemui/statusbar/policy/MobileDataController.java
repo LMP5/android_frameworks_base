@@ -33,7 +33,6 @@ import android.net.NetworkStatsHistory;
 import android.net.NetworkTemplate;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.provider.Settings;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.format.DateUtils;
@@ -191,9 +190,7 @@ public class MobileDataController {
     }
 
     public void setMobileDataEnabled(boolean enabled) {
-        Log.d(TAG, "setMobileDataEnabled: enabled=" + enabled);
-        mTelephonyManager.setDataEnabled(
-                SubscriptionManager.getDefaultDataSubId(), enabled);
+        mTelephonyManager.setDataEnabled(enabled);
         if (mCallback != null) {
             mCallback.onMobileDataEnabled(enabled);
         }
@@ -201,20 +198,19 @@ public class MobileDataController {
 
     public boolean isMobileDataSupported() {
         // require both supported network and ready SIM
+        int prfDataPhoneId = SubscriptionManager.getPhoneId(
+                SubscriptionManager.getDefaultDataSubId());
         return mConnectivityManager.isNetworkSupported(TYPE_MOBILE)
-                && mTelephonyManager.getSimState(
-                        SubscriptionManager.from(mContext).getDefaultDataPhoneId()) == SIM_STATE_READY;
+                && mTelephonyManager.getSimState(prfDataPhoneId) == SIM_STATE_READY;
     }
 
     public boolean isMobileDataEnabled() {
-        return Settings.Global.getInt(mContext.getContentResolver(),
-                Settings.Global.MOBILE_DATA + SubscriptionManager.from(mContext).getDefaultDataPhoneId(), 0) != 0;
+        return mTelephonyManager.getDataEnabled();
     }
 
     private static String getActiveSubscriberId(Context context) {
         final TelephonyManager tele = TelephonyManager.from(context);
-        final String actualSubscriberId =
-                tele.getSubscriberId(SubscriptionManager.getDefaultDataSubId());
+        final String actualSubscriberId = tele.getSubscriberId(SubscriptionManager.getDefaultDataSubId());
         return actualSubscriberId;
     }
 

@@ -25,16 +25,17 @@ import com.android.internal.view.animation.NativeInterpolatorFactoryHelper;
 
 /**
  * An interpolator where the rate of change is constant
+ *
  */
 @HasNativeInterpolator
-public class LinearInterpolator extends BaseInterpolator implements NativeInterpolatorFactory {
+public class LinearInterpolator implements Interpolator, NativeInterpolatorFactory {
 
     public LinearInterpolator() {
     }
-
+    
     public LinearInterpolator(Context context, AttributeSet attrs) {
     }
-
+    
     public float getInterpolation(float input) {
         return input;
     }

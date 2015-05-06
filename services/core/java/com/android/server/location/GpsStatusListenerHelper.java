@@ -17,55 +17,14 @@
 package com.android.server.location;
 
 import android.location.IGpsStatusListener;
-import android.os.Handler;
 import android.os.RemoteException;
 
 /**
  * Implementation of a handler for {@link IGpsStatusListener}.
  */
 abstract class GpsStatusListenerHelper extends RemoteListenerHelper<IGpsStatusListener> {
-    public GpsStatusListenerHelper(Handler handler) {
-        super(handler, "GpsStatusListenerHelper");
-
-        Operation nullOperation = new Operation() {
-            @Override
-            public void execute(IGpsStatusListener iGpsStatusListener) throws RemoteException {}
-        };
-        setSupported(GpsLocationProvider.isSupported(), nullOperation);
-    }
-
-    @Override
-    protected boolean registerWithService() {
-        return true;
-    }
-
-    @Override
-    protected void unregisterFromService() {}
-
-    @Override
-    protected ListenerOperation<IGpsStatusListener> getHandlerOperation(int result) {
-        return null;
-    }
-
-    @Override
-    protected void handleGpsEnabledChanged(boolean enabled) {
-        Operation operation;
-        if (enabled) {
-            operation = new Operation() {
-                @Override
-                public void execute(IGpsStatusListener listener) throws RemoteException {
-                    listener.onGpsStarted();
-                }
-            };
-        } else {
-            operation = new Operation() {
-                @Override
-                public void execute(IGpsStatusListener listener) throws RemoteException {
-                    listener.onGpsStopped();
-                }
-            };
-        }
-        foreach(operation);
+    public GpsStatusListenerHelper() {
+        super("GpsStatusListenerHelper");
     }
 
     public void onFirstFix(final int timeToFirstFix) {
@@ -75,6 +34,22 @@ abstract class GpsStatusListenerHelper extends RemoteListenerHelper<IGpsStatusLi
                 listener.onFirstFix(timeToFirstFix);
             }
         };
+
+        foreach(operation);
+    }
+
+    public void onStatusChanged(final boolean isNavigating) {
+        Operation operation = new Operation() {
+            @Override
+            public void execute(IGpsStatusListener listener) throws RemoteException {
+                if (isNavigating) {
+                    listener.onGpsStarted();
+                } else {
+                    listener.onGpsStopped();
+                }
+            }
+        };
+
         foreach(operation);
     }
 
@@ -101,6 +76,7 @@ abstract class GpsStatusListenerHelper extends RemoteListenerHelper<IGpsStatusLi
                         usedInFixMask);
             }
         };
+
         foreach(operation);
     }
 
@@ -111,6 +87,7 @@ abstract class GpsStatusListenerHelper extends RemoteListenerHelper<IGpsStatusLi
                 listener.onNmeaReceived(timestamp, nmea);
             }
         };
+
         foreach(operation);
     }
 

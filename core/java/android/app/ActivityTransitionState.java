@@ -22,7 +22,6 @@ import android.util.ArrayMap;
 import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.view.Window;
 
 import java.lang.ref.WeakReference;
@@ -253,7 +252,7 @@ class ActivityTransitionState {
         }
     }
 
-    public boolean startExitBackTransition(final Activity activity) {
+    public boolean startExitBackTransition(Activity activity) {
         if (mEnteringNames == null) {
             return false;
         } else {
@@ -261,11 +260,10 @@ class ActivityTransitionState {
                 mHasExited = true;
                 Transition enterViewsTransition = null;
                 ViewGroup decor = null;
-                boolean delayExitBack = false;
                 if (mEnterTransitionCoordinator != null) {
                     enterViewsTransition = mEnterTransitionCoordinator.getEnterViewsTransition();
                     decor = mEnterTransitionCoordinator.getDecor();
-                    delayExitBack = mEnterTransitionCoordinator.cancelEnter();
+                    mEnterTransitionCoordinator.cancelEnter();
                     mEnterTransitionCoordinator = null;
                     if (enterViewsTransition != null && decor != null) {
                         enterViewsTransition.pause(decor);
@@ -277,23 +275,7 @@ class ActivityTransitionState {
                 if (enterViewsTransition != null && decor != null) {
                     enterViewsTransition.resume(decor);
                 }
-                if (delayExitBack && decor != null) {
-                    final ViewGroup finalDecor = decor;
-                    decor.getViewTreeObserver().addOnPreDrawListener(
-                            new ViewTreeObserver.OnPreDrawListener() {
-                                @Override
-                                public boolean onPreDraw() {
-                                    finalDecor.getViewTreeObserver().removeOnPreDrawListener(this);
-                                    if (mReturnExitCoordinator != null) {
-                                        mReturnExitCoordinator.startExit(activity.mResultCode,
-                                                activity.mResultData);
-                                    }
-                                    return true;
-                                }
-                            });
-                } else {
-                    mReturnExitCoordinator.startExit(activity.mResultCode, activity.mResultData);
-                }
+                mReturnExitCoordinator.startExit(activity.mResultCode, activity.mResultData);
             }
             return true;
         }

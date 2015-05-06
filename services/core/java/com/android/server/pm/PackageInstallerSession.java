@@ -505,15 +505,12 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
         // haven't been overridden.
         if (params.mode == SessionParams.MODE_INHERIT_EXISTING) {
             try {
-                final List<File> fromFiles = mResolvedInheritedFiles;
-                final File toDir = resolveStageDir();
-
-                if (isLinkPossible(fromFiles, toDir)) {
-                    linkFiles(fromFiles, toDir);
-                } else {
+                if (stageCid != null) {
                     // TODO: this should delegate to DCS so the system process
                     // avoids holding open FDs into containers.
-                    copyFiles(fromFiles, toDir);
+                    copyFiles(mResolvedInheritedFiles, resolveStageDir());
+                } else {
+                    linkFiles(mResolvedInheritedFiles, resolveStageDir());
                 }
             } catch (IOException e) {
                 throw new PackageManagerException(INSTALL_FAILED_INSUFFICIENT_STORAGE,
@@ -732,7 +729,7 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
         // This is kind of hacky; we're creating a half-parsed package that is
         // straddled between the inherited and staged APKs.
         final PackageLite pkg = new PackageLite(null, baseApk, null,
-                splitPaths.toArray(new String[splitPaths.size()]), null);
+                splitPaths.toArray(new String[splitPaths.size()]));
         final boolean isForwardLocked =
                 (params.installFlags & PackageManager.INSTALL_FORWARD_LOCK) != 0;
 
@@ -742,26 +739,6 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
             throw new PackageManagerException(INSTALL_FAILED_INVALID_APK,
                     "Failed to calculate install size", e);
         }
-    }
-
-    /**
-     * Determine if creating hard links between source and destination is
-     * possible. That is, do they all live on the same underlying device.
-     */
-    private boolean isLinkPossible(List<File> fromFiles, File toDir) {
-        try {
-            final StructStat toStat = Os.stat(toDir.getAbsolutePath());
-            for (File fromFile : fromFiles) {
-                final StructStat fromStat = Os.stat(fromFile.getAbsolutePath());
-                if (fromStat.st_dev != toStat.st_dev) {
-                    return false;
-                }
-            }
-        } catch (ErrnoException e) {
-            Slog.w(TAG, "Failed to detect if linking possible: " + e);
-            return false;
-        }
-        return true;
     }
 
     private static void linkFiles(List<File> fromFiles, File toDir) throws IOException {
@@ -791,11 +768,7 @@ public class PackageInstallerSession extends IPackageInstallerSession.Stub {
             if (!FileUtils.copyFile(fromFile, tmpFile)) {
                 throw new IOException("Failed to copy " + fromFile + " to " + tmpFile);
             }
-            try {
-                Os.chmod(tmpFile.getAbsolutePath(), 0644);
-            } catch (ErrnoException e) {
-                throw new IOException("Failed to chmod " + tmpFile);
-            }
+
             final File toFile = new File(toDir, fromFile.getName());
             if (LOGD) Slog.d(TAG, "Renaming " + tmpFile + " to " + toFile);
             if (!tmpFile.renameTo(toFile)) {

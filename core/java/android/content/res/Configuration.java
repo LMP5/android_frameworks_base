@@ -1447,13 +1447,13 @@ public final class Configuration implements Parcelable, Comparable<Configuration
         ArrayList<String> parts = new ArrayList<String>();
 
         if (config.mcc != 0) {
-            parts.add("mcc" + config.mcc);
+            parts.add(config.mcc + "mcc");
             if (config.mnc != 0) {
-                parts.add("mnc" + config.mnc);
+                parts.add(config.mnc + "mnc");
             }
         }
 
-        if (config.locale != null && !config.locale.getLanguage().isEmpty()) {
+        if (!config.locale.getLanguage().isEmpty()) {
             parts.add(localeToResourceQualifier(config.locale));
         }
 

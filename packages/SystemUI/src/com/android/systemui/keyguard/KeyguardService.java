@@ -29,7 +29,6 @@ import com.android.internal.policy.IKeyguardExitCallback;
 import com.android.internal.policy.IKeyguardService;
 import com.android.internal.policy.IKeyguardServiceConstants;
 import com.android.internal.policy.IKeyguardShowCallback;
-import com.android.internal.policy.IKeyguardStateCallback;
 import com.android.systemui.SystemUIApplication;
 
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
@@ -63,12 +62,6 @@ public class KeyguardService extends Service {
     private final IKeyguardService.Stub mBinder = new IKeyguardService.Stub() {
 
         private boolean mIsOccluded;
-
-         @Override // Binder interface
-         public void addStateMonitorCallback(IKeyguardStateCallback callback) {
-             checkPermission();
-             mKeyguardViewMediator.addStateMonitorCallback(callback);
-         }
 
         @Override
         public boolean isShowing() {
@@ -196,6 +189,11 @@ public class KeyguardService extends Service {
 
         @Override
         public void dispatch(MotionEvent event) {
+            checkPermission();
+        }
+
+        @Override
+        public void launchCamera() {
             checkPermission();
         }
 

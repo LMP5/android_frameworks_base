@@ -351,10 +351,9 @@ public class ExpandHelper implements Gefingerpoken {
                 mVelocityTracker.addMovement(event);
                 break;
             case MotionEvent.ACTION_MOVE:
-                if (mVelocityTracker == null) {
-                    mVelocityTracker = VelocityTracker.obtain();
+                if (mVelocityTracker != null) {
+                    mVelocityTracker.addMovement(event);
                 }
-                mVelocityTracker.addMovement(event);
                 break;
             default:
                 break;

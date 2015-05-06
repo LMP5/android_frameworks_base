@@ -23,5 +23,4 @@ import android.location.GpsNavigationMessageEvent;
  */
 oneway interface IGpsNavigationMessageListener {
     void onGpsNavigationMessageReceived(in GpsNavigationMessageEvent event);
-    void onStatusChanged(in int status);
 }

@@ -572,12 +572,6 @@ public final class MediaDrm {
      */
     public native List<byte[]> getSecureStops();
 
-    /**
-     * Access secure stop by secure stop ID.
-     *
-     * @param ssid - The secure stop ID provided by the license server.
-     */
-    public native byte[] getSecureStop(byte[] ssid);
 
     /**
      * Process the SecureStop server response message ssRelease.  After authenticating
@@ -587,10 +581,6 @@ public final class MediaDrm {
      */
     public native void releaseSecureStops(byte[] ssRelease);
 
-    /**
-     * Remove all secure stops without requiring interaction with the server.
-     */
-     public native void releaseAllSecureStops();
 
     /**
      * String property name: identifies the maker of the DRM engine plugin

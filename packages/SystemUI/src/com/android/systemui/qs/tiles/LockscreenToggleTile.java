@@ -33,8 +33,9 @@ import com.android.systemui.statusbar.policy.KeyguardMonitor;
 public class LockscreenToggleTile extends QSTile<QSTile.BooleanState>
         implements KeyguardMonitor.Callback {
 
-    public static final String ACTION_APPLY_LOCKSCREEN_STATE =
-            "com.android.systemui.qs.tiles.action.APPLY_LOCKSCREEN_STATE";
+    private static final String KEYGUARD_SERVICE_ACTION_STATE_CHANGE =
+            "com.android.internal.action.KEYGUARD_SERVICE_STATE_CHANGED";
+    private static final String KEYGUARD_SERVICE_EXTRA_ACTIVE = "active";
 
     private static final String KEY_ENABLED = "lockscreen_enabled";
 
@@ -50,11 +51,9 @@ public class LockscreenToggleTile extends QSTile<QSTile.BooleanState>
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (mKeyguardViewMediator != null) {
-                mKeyguardBound = mKeyguardViewMediator.isKeyguardBound();
-                applyLockscreenState();
-                refreshState();
-            }
+            mKeyguardBound = intent.getBooleanExtra(KEYGUARD_SERVICE_EXTRA_ACTIVE, false);
+            applyLockscreenState();
+            refreshState();
         }
     };
 
@@ -66,10 +65,9 @@ public class LockscreenToggleTile extends QSTile<QSTile.BooleanState>
         mKeyguardViewMediator =
                 ((SystemUIApplication) mContext.getApplicationContext()).getComponent(KeyguardViewMediator.class);
         mPersistedState = getPersistedState();
-        mKeyguardBound = mKeyguardViewMediator.isKeyguardBound();
-        applyLockscreenState();
 
-        mContext.registerReceiver(mReceiver, new IntentFilter(ACTION_APPLY_LOCKSCREEN_STATE));
+        IntentFilter filter = new IntentFilter(KEYGUARD_SERVICE_ACTION_STATE_CHANGE);
+        mContext.registerReceiver(mReceiver, filter);
     }
 
     @Override
@@ -105,14 +103,14 @@ public class LockscreenToggleTile extends QSTile<QSTile.BooleanState>
                 || mPersistedState
                 || mKeyguardViewMediator.getKeyguardEnabledInternal();
 
-        state.visible = mKeyguardBound;
-        state.enabled = !mKeyguard.isShowing() || !mKeyguard.isSecure();
+        state.visible = mKeyguardBound
+                && !(mKeyguard.isShowing() && mKeyguard.isSecure());
         state.label = mContext.getString(lockscreenEnforced
                 ? R.string.quick_settings_lockscreen_label_enforced
                 : R.string.quick_settings_lockscreen_label);
-        state.icon = lockscreenEnabled
-                ? ResourceIcon.get(R.drawable.ic_qs_lock_screen_on)
-                : ResourceIcon.get(R.drawable.ic_qs_lock_screen_off);
+        state.iconId = lockscreenEnabled
+                ? R.drawable.ic_qs_lock_screen_on
+                : R.drawable.ic_qs_lock_screen_off;
     }
 
     @Override

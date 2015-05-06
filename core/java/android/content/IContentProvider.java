@@ -47,8 +47,7 @@ public interface IContentProvider extends IInterface {
     public int update(String callingPkg, Uri url, ContentValues values, String selection,
             String[] selectionArgs) throws RemoteException;
     public ParcelFileDescriptor openFile(
-            String callingPkg, Uri url, String mode, ICancellationSignal signal,
-            IBinder callerToken)
+            String callingPkg, Uri url, String mode, ICancellationSignal signal)
             throws RemoteException, FileNotFoundException;
     public AssetFileDescriptor openAssetFile(
             String callingPkg, Uri url, String mode, ICancellationSignal signal)

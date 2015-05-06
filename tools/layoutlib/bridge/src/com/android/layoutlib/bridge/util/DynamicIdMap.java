@@ -16,7 +16,6 @@
 
 package com.android.layoutlib.bridge.util;
 
-import com.android.annotations.NonNull;
 import com.android.resources.ResourceType;
 import com.android.util.Pair;
 
@@ -49,7 +48,6 @@ public class DynamicIdMap {
      * @param name the name of the resource
      * @return an integer.
      */
-    @NonNull
     public Integer getId(ResourceType type, String name) {
         return getId(Pair.of(type, name));
     }
@@ -61,11 +59,10 @@ public class DynamicIdMap {
      * @param resource the type/name of the resource
      * @return an integer.
      */
-    @NonNull
     public Integer getId(Pair<ResourceType, String> resource) {
         Integer value = mDynamicIds.get(resource);
         if (value == null) {
-            value = ++mDynamicSeed;
+            value = Integer.valueOf(++mDynamicSeed);
             mDynamicIds.put(resource, value);
             mRevDynamicIds.put(value, resource);
         }

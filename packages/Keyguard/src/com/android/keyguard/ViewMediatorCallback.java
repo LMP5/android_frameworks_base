@@ -71,10 +71,4 @@ public interface ViewMediatorCallback {
      * Play the "device trusted" sound.
      */
     void playTrustedSound();
-
-    /**
-     * @return true if and only if Keyguard is showing or if Keyguard is disabled by an external app
-     *         (legacy API)
-     */
-    boolean isInputRestricted();
 }

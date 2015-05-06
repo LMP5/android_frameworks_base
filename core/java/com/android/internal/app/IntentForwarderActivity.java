@@ -58,22 +58,21 @@ public class IntentForwarderActivity extends Activity  {
         Intent intentReceived = getIntent();
 
         String className = intentReceived.getComponent().getClassName();
-        final int targetUserId;
+        final UserHandle userDest;
         final int userMessageId;
 
         if (className.equals(FORWARD_INTENT_TO_USER_OWNER)) {
             userMessageId = com.android.internal.R.string.forward_intent_to_owner;
-            targetUserId = UserHandle.USER_OWNER;
+            userDest = UserHandle.OWNER;
         } else if (className.equals(FORWARD_INTENT_TO_MANAGED_PROFILE)) {
             userMessageId = com.android.internal.R.string.forward_intent_to_work;
-            targetUserId = getManagedProfile();
+            userDest = getManagedProfile();
         } else {
             Slog.wtf(TAG, IntentForwarderActivity.class.getName() + " cannot be called directly");
             userMessageId = -1;
-            targetUserId = UserHandle.USER_NULL;
+            userDest = null;
         }
-        if (targetUserId == UserHandle.USER_NULL) {
-            // This covers the case where there is no managed profile.
+        if (userDest == null) { // This covers the case where there is no managed profile.
             finish();
             return;
         }
@@ -84,27 +83,31 @@ public class IntentForwarderActivity extends Activity  {
         newIntent.addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT
                 |Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
         int callingUserId = getUserId();
-
-        if (canForward(newIntent, targetUserId)) {
-            if (newIntent.getAction().equals(Intent.ACTION_CHOOSER)) {
-                Intent innerIntent = (Intent) newIntent.getParcelableExtra(Intent.EXTRA_INTENT);
-                innerIntent.setContentUserHint(callingUserId);
-            } else {
-                newIntent.setContentUserHint(callingUserId);
-            }
+        IPackageManager ipm = AppGlobals.getPackageManager();
+        String resolvedType = newIntent.resolveTypeIfNeeded(getContentResolver());
+        boolean canForward = false;
+        Intent selector = newIntent.getSelector();
+        if (selector == null) {
+            selector = newIntent;
+        }
+        try {
+            canForward = ipm.canForwardTo(selector, resolvedType, callingUserId,
+                    userDest.getIdentifier());
+        } catch (RemoteException e) {
+            Slog.e(TAG, "PackageManagerService is dead?");
+        }
+        if (canForward) {
+            newIntent.setContentUserHint(callingUserId);
 
             final android.content.pm.ResolveInfo ri = getPackageManager().resolveActivityAsUser(
-                        newIntent, MATCH_DEFAULT_ONLY, targetUserId);
+                        newIntent, MATCH_DEFAULT_ONLY, userDest.getIdentifier());
 
-            // Don't show the disclosure if next activity is ResolverActivity or ChooserActivity
-            // as those will already have shown work / personal as neccesary etc.
-            final boolean shouldShowDisclosure = ri == null || ri.activityInfo == null ||
-                    !"android".equals(ri.activityInfo.packageName) ||
-                    !(ResolverActivity.class.getName().equals(ri.activityInfo.name)
-                    || ChooserActivity.class.getName().equals(ri.activityInfo.name));
+            // Only show a disclosure if this is a normal (non-OS) app
+            final boolean shouldShowDisclosure =
+                    !UserHandle.isSameApp(ri.activityInfo.applicationInfo.uid, Process.SYSTEM_UID);
 
             try {
-                startActivityAsCaller(newIntent, null, targetUserId);
+                startActivityAsCaller(newIntent, null, userDest.getIdentifier());
             } catch (RuntimeException e) {
                 int launchedFromUid = -1;
                 String launchedFromPackage = "?";
@@ -126,55 +129,26 @@ public class IntentForwarderActivity extends Activity  {
             }
         } else {
             Slog.wtf(TAG, "the intent: " + newIntent + "cannot be forwarded from user "
-                    + callingUserId + " to user " + targetUserId);
+                    + callingUserId + " to user " + userDest.getIdentifier());
         }
         finish();
     }
 
-    boolean canForward(Intent intent, int targetUserId)  {
-        IPackageManager ipm = AppGlobals.getPackageManager();
-        if (intent.getAction().equals(Intent.ACTION_CHOOSER)) {
-            // The EXTRA_INITIAL_INTENTS may not be allowed to be forwarded.
-            if (intent.hasExtra(Intent.EXTRA_INITIAL_INTENTS)) {
-                Slog.wtf(TAG, "An chooser intent with extra initial intents cannot be forwarded to"
-                        + " a different user");
-                return false;
-            }
-            if (intent.hasExtra(Intent.EXTRA_REPLACEMENT_EXTRAS)) {
-                Slog.wtf(TAG, "A chooser intent with replacement extras cannot be forwarded to a"
-                        + " different user");
-                return false;
-            }
-            intent = (Intent) intent.getParcelableExtra(Intent.EXTRA_INTENT);
-        }
-        String resolvedType = intent.resolveTypeIfNeeded(getContentResolver());
-        if (intent.getSelector() != null) {
-            intent = intent.getSelector();
-        }
-        try {
-            return ipm.canForwardTo(intent, resolvedType, getUserId(),
-                    targetUserId);
-        } catch (RemoteException e) {
-            Slog.e(TAG, "PackageManagerService is dead?");
-            return false;
-        }
-    }
-
     /**
-     * Returns the userId of the managed profile for this device or UserHandle.USER_NULL if there is
-     * no managed profile.
+     * Returns the managed profile for this device or null if there is no managed
+     * profile.
      *
      * TODO: Remove the assumption that there is only one managed profile
      * on the device.
      */
-    private int getManagedProfile() {
+    private UserHandle getManagedProfile() {
         UserManager userManager = (UserManager) getSystemService(Context.USER_SERVICE);
         List<UserInfo> relatedUsers = userManager.getProfiles(UserHandle.USER_OWNER);
         for (UserInfo userInfo : relatedUsers) {
-            if (userInfo.isManagedProfile()) return userInfo.id;
+            if (userInfo.isManagedProfile()) return new UserHandle(userInfo.id);
         }
         Slog.wtf(TAG, FORWARD_INTENT_TO_MANAGED_PROFILE
                 + " has been called, but there is no managed profile");
-        return UserHandle.USER_NULL;
+        return null;
     }
 }

@@ -76,9 +76,6 @@ public final class MediaProjection {
         if (callback == null) {
             throw new IllegalArgumentException("callback should not be null");
         }
-        if (handler == null) {
-            handler = new Handler();
-        }
         mCallbacks.put(callback, new CallbackRecord(callback, handler));
     }
 
@@ -129,7 +126,8 @@ public final class MediaProjection {
      * invoked, or null if the callback should be invoked on the calling
      * thread's main {@link android.os.Looper}.
      *
-     * @see android.hardware.display.VirtualDisplay
+     * @see android.hardware.display.DisplayManager#createVirtualDisplay(
+     * String, int, int, int, int, Surface, VirtualDisplay.Callback, Handler)
      */
     public VirtualDisplay createVirtualDisplay(@NonNull String name,
             int width, int height, int dpi, int flags, @Nullable Surface surface,
@@ -185,15 +183,16 @@ public final class MediaProjection {
     private final class MediaProjectionCallback extends IMediaProjectionCallback.Stub {
         @Override
         public void onStop() {
-            for (CallbackRecord cbr : mCallbacks.values()) {
-                cbr.onStop();
+            final int N = mCallbacks.size();
+            for (int i = 0; i < N; i++) {
+                mCallbacks.get(i).onStop();
             }
         }
     }
 
     private final static class CallbackRecord {
-        private final Callback mCallback;
-        private final Handler mHandler;
+        private Callback mCallback;
+        private Handler mHandler;
 
         public CallbackRecord(Callback callback, Handler handler) {
             mCallback = callback;

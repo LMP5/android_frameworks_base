@@ -634,17 +634,6 @@ public final class PrintManager {
         }
 
         @Override
-        public void kill(String reason) {
-            synchronized (mLock) {
-                // If destroyed the handler is null.
-                if (!isDestroyedLocked()) {
-                    mHandler.obtainMessage(MyHandler.MSG_ON_KILL,
-                            reason).sendToTarget();
-                }
-            }
-        }
-
-        @Override
         public void onActivityPaused(Activity activity) {
             /* do nothing */
         }
@@ -730,7 +719,6 @@ public final class PrintManager {
             public static final int MSG_ON_LAYOUT = 2;
             public static final int MSG_ON_WRITE = 3;
             public static final int MSG_ON_FINISH = 4;
-            public static final int MSG_ON_KILL = 5;
 
             public MyHandler(Looper looper) {
                 super(looper, null, true);
@@ -805,15 +793,6 @@ public final class PrintManager {
                             destroyLocked();
                         }
                     } break;
-
-                    case MSG_ON_KILL: {
-                        if (DEBUG) {
-                            Log.i(LOG_TAG, "onKill()");
-                        }
-
-                        String reason = (String) message.obj;
-                        throw new RuntimeException(reason);
-                    }
 
                     default: {
                         throw new IllegalArgumentException("Unknown message: "

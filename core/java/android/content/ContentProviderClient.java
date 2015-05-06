@@ -288,7 +288,7 @@ public class ContentProviderClient {
                 remoteSignal = mContentProvider.createCancellationSignal();
                 signal.setRemote(remoteSignal);
             }
-            return mContentProvider.openFile(mPackageName, url, mode, remoteSignal, null);
+            return mContentProvider.openFile(mPackageName, url, mode, remoteSignal);
         } catch (DeadObjectException e) {
             if (!mStable) {
                 mContentResolver.unstableProviderDied(mContentProvider);

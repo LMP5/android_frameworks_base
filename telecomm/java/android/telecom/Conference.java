@@ -17,12 +17,10 @@
 package android.telecom;
 
 import android.annotation.SystemApi;
-import android.telecom.Connection.VideoProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -33,9 +31,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  */
 @SystemApi
 public abstract class Conference implements IConferenceable {
-    public static long CONNECT_TIME_NOT_SPECIFIED = 0;
-/** @hide */
-    public static final long NO_CONNECTTIME = 0;
+
     /** @hide */
     public abstract static class Listener {
         public void onStateChanged(Conference conference, int oldState, int newState) {}
@@ -45,10 +41,7 @@ public abstract class Conference implements IConferenceable {
         public void onConferenceableConnectionsChanged(
                 Conference conference, List<Connection> conferenceableConnections) {}
         public void onDestroyed(Conference conference) {}
-        public void onVideoStateChanged(Conference c, int videoState) { }
-        public void onVideoProviderChanged(Conference c, Connection.VideoProvider videoProvider) {}
-        public void onConnectionCapabilitiesChanged(
-                Conference conference, int connectionCapabilities) {}
+        public void onCapabilitiesChanged(Conference conference, int capabilities) {}
     }
 
     private final Set<Listener> mListeners = new CopyOnWriteArraySet<>();
@@ -59,13 +52,13 @@ public abstract class Conference implements IConferenceable {
     private final List<Connection> mUnmodifiableConferenceableConnections =
             Collections.unmodifiableList(mConferenceableConnections);
 
-    protected PhoneAccountHandle mPhoneAccount;
+    private PhoneAccountHandle mPhoneAccount;
     private AudioState mAudioState;
     private int mState = Connection.STATE_NEW;
     private DisconnectCause mDisconnectCause;
-    private int mConnectionCapabilities;
+    private int mCapabilities;
     private String mDisconnectMessage;
-    private long mConnectTimeMillis = NO_CONNECTTIME;
+
     private final Connection.Listener mConnectionDeathListener = new Connection.Listener() {
         @Override
         public void onDestroyed(Connection c) {
@@ -111,62 +104,13 @@ public abstract class Conference implements IConferenceable {
         return mState;
     }
 
-    /** @hide */
-    @Deprecated public final int getCapabilities() {
-        return getConnectionCapabilities();
-    }
-
     /**
-     * Returns the capabilities of a conference. See {@code CAPABILITY_*} constants in class
-     * {@link Connection} for valid values.
+     * Returns the capabilities of a conference. See {@link PhoneCapabilities} for valid values.
      *
-     * @return A bitmask of the capabilities of the conference call.
+     * @return A bitmask of the {@code PhoneCapabilities} of the conference call.
      */
-    public final int getConnectionCapabilities() {
-        return mConnectionCapabilities;
-    }
-
-    /**
-     * Whether the given capabilities support the specified capability.
-     *
-     * @param capabilities A capability bit field.
-     * @param capability The capability to check capabilities for.
-     * @return Whether the specified capability is supported.
-     * @hide
-     */
-    public static boolean can(int capabilities, int capability) {
-        return (capabilities & capability) != 0;
-    }
-
-    /**
-     * Whether the capabilities of this {@code Connection} supports the specified capability.
-     *
-     * @param capability The capability to check capabilities for.
-     * @return Whether the specified capability is supported.
-     * @hide
-     */
-    public boolean can(int capability) {
-        return can(mConnectionCapabilities, capability);
-    }
-
-    /**
-     * Removes the specified capability from the set of capabilities of this {@code Conference}.
-     *
-     * @param capability The capability to remove from the set.
-     * @hide
-     */
-    public void removeCapability(int capability) {
-        mConnectionCapabilities &= ~capability;
-    }
-
-    /**
-     * Adds the specified capability to the set of capabilities of this {@code Conference}.
-     *
-     * @param capability The capability to add to the set.
-     * @hide
-     */
-    public void addCapability(int capability) {
-        mConnectionCapabilities |= capability;
+    public final int getCapabilities() {
+        return mCapabilities;
     }
 
     /**
@@ -176,22 +120,6 @@ public abstract class Conference implements IConferenceable {
      */
     public final AudioState getAudioState() {
         return mAudioState;
-    }
-
-    /**
-     * Returns VideoProvider of the primary call. This can be null.
-     *  @hide
-     */
-    public VideoProvider getVideoProvider() {
-        return null;
-    }
-
-    /**
-     * Returns video state of the primary call.
-     *  @hide
-     */
-    public int getVideoState() {
-        return VideoProfile.VideoState.AUDIO_ONLY;
     }
 
     /**
@@ -205,14 +133,6 @@ public abstract class Conference implements IConferenceable {
      * @param connection The connection to separate.
      */
     public void onSeparate(Connection connection) {}
-
-    /**
-     * Invoked when the conference adds a participant to the conference call.
-     *
-     * @param participant The participant to be added with conference call.
-     * @hide
-     */
-    public void onAddParticipant(String participant) {}
 
     /**
      * Invoked when the specified {@link Connection} should merged with the conference call.
@@ -233,13 +153,13 @@ public abstract class Conference implements IConferenceable {
 
     /**
      * Invoked when the child calls should be merged. Only invoked if the conference contains the
-     * capability {@link Connection#CAPABILITY_MERGE_CONFERENCE}.
+     * capability {@link PhoneCapabilities#MERGE_CONFERENCE}.
      */
     public void onMerge() {}
 
     /**
      * Invoked when the child calls should be swapped. Only invoked if the conference contains the
-     * capability {@link Connection#CAPABILITY_SWAP_CONFERENCE}.
+     * capability {@link PhoneCapabilities#SWAP_CONFERENCE}.
      */
     public void onSwap() {}
 
@@ -277,14 +197,6 @@ public abstract class Conference implements IConferenceable {
     }
 
     /**
-     * Sets state to be dialing.
-     * @hide
-     */
-    public final void setDialing() {
-        setState(Connection.STATE_DIALING);
-    }
-
-    /**
      * Sets state to be active.
      */
     public final void setActive() {
@@ -312,23 +224,17 @@ public abstract class Conference implements IConferenceable {
         return mDisconnectCause;
     }
 
-    /** @hide */
-    @Deprecated public final void setCapabilities(int connectionCapabilities) {
-        setConnectionCapabilities(connectionCapabilities);
-    }
-
     /**
-     * Sets the capabilities of a conference. See {@code CAPABILITY_*} constants of class
-     * {@link Connection} for valid values.
+     * Sets the capabilities of a conference. See {@link PhoneCapabilities} for valid values.
      *
-     * @param connectionCapabilities A bitmask of the {@code PhoneCapabilities} of the conference call.
+     * @param capabilities A bitmask of the {@code PhoneCapabilities} of the conference call.
      */
-    public final void setConnectionCapabilities(int connectionCapabilities) {
-        if (connectionCapabilities != mConnectionCapabilities) {
-            mConnectionCapabilities = connectionCapabilities;
+    public final void setCapabilities(int capabilities) {
+        if (capabilities != mCapabilities) {
+            mCapabilities = capabilities;
 
             for (Listener l : mListeners) {
-                l.onConnectionCapabilitiesChanged(this, mConnectionCapabilities);
+                l.onCapabilitiesChanged(this, mCapabilities);
             }
         }
     }
@@ -340,7 +246,6 @@ public abstract class Conference implements IConferenceable {
      * @return True if the connection was successfully added.
      */
     public final boolean addConnection(Connection connection) {
-        Log.d(this, "Connection=%s, connection=", connection);
         if (connection != null && !mChildConnections.contains(connection)) {
             if (connection.setConference(this)) {
                 mChildConnections.add(connection);
@@ -385,26 +290,6 @@ public abstract class Conference implements IConferenceable {
             }
         }
         fireOnConferenceableConnectionsChanged();
-    }
-
-    /**
-     * @hide
-     */
-    public final void setVideoState(Connection c, int videoState) {
-        Log.d(this, "setVideoState Conference: %s Connection: %s VideoState: %s",
-                this, c, videoState);
-        for (Listener l : mListeners) {
-            l.onVideoStateChanged(this, videoState);
-        }
-    }
-
-    /** @hide */
-    public final void setVideoProvider(Connection c, Connection.VideoProvider videoProvider) {
-        Log.d(this, "setVideoProvider Conference: %s Connection: %s VideoState: %s",
-                this, c, videoProvider);
-        for (Listener l : mListeners) {
-            l.onVideoProviderChanged(this, videoProvider);
-        }
     }
 
     private final void fireOnConferenceableConnectionsChanged() {
@@ -480,14 +365,6 @@ public abstract class Conference implements IConferenceable {
         return mUnmodifiableChildConnections.get(0);
     }
 
-    public void setConnectTimeMillis(long oldConnectTimeMillis) {
-        mConnectTimeMillis = oldConnectTimeMillis;
-    }
-
-    public long getConnectTimeMillis() {
-        return mConnectTimeMillis;
-    }
-
     /**
      * Inform this Conference that the state of its audio output has been changed externally.
      *
@@ -502,7 +379,6 @@ public abstract class Conference implements IConferenceable {
 
     private void setState(int newState) {
         if (newState != Connection.STATE_ACTIVE &&
-                newState != Connection.STATE_DIALING &&
                 newState != Connection.STATE_HOLDING &&
                 newState != Connection.STATE_DISCONNECTED) {
             Log.w(this, "Unsupported state transition for Conference call.",
@@ -524,16 +400,5 @@ public abstract class Conference implements IConferenceable {
             c.removeConnectionListener(mConnectionDeathListener);
         }
         mConferenceableConnections.clear();
-    }
-
-    @Override
-    public String toString() {
-        return String.format(Locale.US,
-                "[State: %s,Capabilites: %s, VideoState: %s, VideoProvider: %s, ThisObject %s]",
-                Connection.stateToString(mState),
-                PhoneCapabilities.toString(mConnectionCapabilities),
-                getVideoState(),
-                getVideoProvider(),
-                super.toString());
     }
 }

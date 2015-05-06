@@ -137,7 +137,7 @@ public final class RemotePrintDocument {
     private final DeathRecipient mDeathRecipient = new DeathRecipient() {
         @Override
         public void binderDied() {
-            onPrintingAppDied();
+            notifyPrintingAppDied();
         }
     };
 
@@ -268,7 +268,7 @@ public final class RemotePrintDocument {
             mPrintDocumentAdapter.finish();
             mState = STATE_FINISHED;
         } catch (RemoteException re) {
-            Log.e(LOG_TAG, "Error calling finish()");
+            Log.e(LOG_TAG, "Error calling finish()", re);
             mState = STATE_FAILED;
         }
     }
@@ -302,18 +302,6 @@ public final class RemotePrintDocument {
         mState = STATE_DESTROYED;
 
         disconnectFromRemoteDocument();
-    }
-
-    public void kill(String reason) {
-        if (DEBUG) {
-            Log.i(LOG_TAG, "[CALLED] kill()");
-        }
-
-        try {
-            mPrintDocumentAdapter.kill(reason);
-        } catch (RemoteException re) {
-            Log.e(LOG_TAG, "Error calling kill()", re);
-        }
     }
 
     public boolean isUpdating() {
@@ -1120,8 +1108,7 @@ public final class RemotePrintDocument {
         }
     }
 
-    private void onPrintingAppDied() {
-        mState = STATE_FAILED;
+    private void notifyPrintingAppDied() {
         new Handler(mLooper).post(new Runnable() {
             @Override
             public void run() {
@@ -1142,7 +1129,7 @@ public final class RemotePrintDocument {
         public void onDestroy() {
             final RemotePrintDocument document = mWeakDocument.get();
             if (document != null) {
-                document.onPrintingAppDied();
+                document.notifyPrintingAppDied();
             }
         }
     }

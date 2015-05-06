@@ -20,15 +20,12 @@
 #include <GLES2/gl2.h>
 
 #include <SkCanvas.h>
-#include <SkPixelRef.h>
 
 #include <utils/Mutex.h>
 
-#include "AssetAtlas.h"
 #include "Caches.h"
 #include "TextureCache.h"
 #include "Properties.h"
-#include "utils/TraceUtils.h"
 
 namespace android {
 namespace uirenderer {
@@ -38,9 +35,9 @@ namespace uirenderer {
 ///////////////////////////////////////////////////////////////////////////////
 
 TextureCache::TextureCache():
-        mCache(LruCache<uint32_t, Texture*>::kUnlimitedCapacity),
+        mCache(LruCache<const SkPixelRef*, Texture*>::kUnlimitedCapacity),
         mSize(0), mMaxSize(MB(DEFAULT_TEXTURE_CACHE_SIZE)),
-        mFlushRate(DEFAULT_TEXTURE_CACHE_FLUSH_RATE), mAssetAtlas(0) {
+        mFlushRate(DEFAULT_TEXTURE_CACHE_FLUSH_RATE) {
     char property[PROPERTY_VALUE_MAX];
     if (property_get(PROPERTY_TEXTURE_CACHE_SIZE, property, NULL) > 0) {
         INIT_LOGD("  Setting texture cache size to %sMB", property);
@@ -62,8 +59,8 @@ TextureCache::TextureCache():
 }
 
 TextureCache::TextureCache(uint32_t maxByteSize):
-        mCache(LruCache<uint32_t, Texture*>::kUnlimitedCapacity),
-        mSize(0), mMaxSize(maxByteSize), mAssetAtlas(0) {
+        mCache(LruCache<const SkPixelRef*, Texture*>::kUnlimitedCapacity),
+        mSize(0), mMaxSize(maxByteSize) {
     init();
 }
 
@@ -107,7 +104,7 @@ void TextureCache::setFlushRate(float flushRate) {
 // Callbacks
 ///////////////////////////////////////////////////////////////////////////////
 
-void TextureCache::operator()(uint32_t&, Texture*& texture) {
+void TextureCache::operator()(const SkPixelRef*&, Texture*& texture) {
     // This will be called already locked
     if (texture) {
         mSize -= texture->bitmapSize;
@@ -125,12 +122,8 @@ void TextureCache::operator()(uint32_t&, Texture*& texture) {
 // Caching
 ///////////////////////////////////////////////////////////////////////////////
 
-void TextureCache::setAssetAtlas(AssetAtlas* assetAtlas) {
-    mAssetAtlas = assetAtlas;
-}
-
 void TextureCache::resetMarkInUse() {
-    LruCache<uint32_t, Texture*>::Iterator iter(mCache);
+    LruCache<const SkPixelRef*, Texture*>::Iterator iter(mCache);
     while (iter.next()) {
         iter.value()->isInUse = false;
     }
@@ -148,14 +141,7 @@ bool TextureCache::canMakeTextureFromBitmap(const SkBitmap* bitmap) {
 // Returns a prepared Texture* that either is already in the cache or can fit
 // in the cache (and is thus added to the cache)
 Texture* TextureCache::getCachedTexture(const SkBitmap* bitmap) {
-    if (CC_LIKELY(mAssetAtlas)) {
-        AssetAtlas::Entry* entry = mAssetAtlas->getEntry(bitmap);
-        if (CC_UNLIKELY(entry)) {
-            return entry->texture;
-        }
-    }
-
-    Texture* texture = mCache.get(bitmap->pixelRef()->getStableID());
+    Texture* texture = mCache.get(bitmap->pixelRef());
 
     if (!texture) {
         if (!canMakeTextureFromBitmap(bitmap)) {
@@ -185,7 +171,7 @@ Texture* TextureCache::getCachedTexture(const SkBitmap* bitmap) {
             if (mDebugEnabled) {
                 ALOGD("Texture created, size = %d", size);
             }
-            mCache.put(bitmap->pixelRef()->getStableID(), texture);
+            mCache.put(bitmap->pixelRef(), texture);
         }
     } else if (!texture->isInUse && bitmap->getGenerationID() != texture->generation) {
         // Texture was in the cache but is dirty, re-upload
@@ -232,19 +218,22 @@ Texture* TextureCache::getTransient(const SkBitmap* bitmap) {
     return texture;
 }
 
-void TextureCache::releaseTexture(const SkBitmap* bitmap) {
-    if (!bitmap || !bitmap->pixelRef()) return;
+void TextureCache::remove(const SkBitmap* bitmap) {
+    mCache.remove(bitmap->pixelRef());
+}
 
+void TextureCache::removeDeferred(const SkBitmap* bitmap) {
     Mutex::Autolock _l(mLock);
-    mGarbage.push(bitmap->pixelRef()->getStableID());
+    mGarbage.push(bitmap);
 }
 
 void TextureCache::clearGarbage() {
     Mutex::Autolock _l(mLock);
     size_t count = mGarbage.size();
     for (size_t i = 0; i < count; i++) {
-        uint32_t pixelRefId = mGarbage.itemAt(i);
-        mCache.remove(pixelRefId);
+        const SkBitmap* bitmap = mGarbage.itemAt(i);
+        mCache.remove(bitmap->pixelRef());
+        delete bitmap;
     }
     mGarbage.clear();
 }
@@ -277,7 +266,7 @@ void TextureCache::generateTexture(const SkBitmap* bitmap, Texture* texture, boo
         return;
     }
 
-    ATRACE_FORMAT("Upload %ux%u Texture", bitmap->width(), bitmap->height());
+    ATRACE_CALL();
 
     // We could also enable mipmapping if both bitmap dimensions are powers
     // of 2 but we'd have to deal with size changes. Let's keep this simple

@@ -21,16 +21,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import android.net.Uri;
 import android.util.FastImmutableArraySet;
 import android.util.ArrayMap;
-import android.util.ArraySet;
 import android.util.Log;
-import android.util.MutableInt;
 import android.util.PrintWriterPrinter;
 import android.util.Slog;
 import android.util.LogPrinter;
@@ -213,65 +213,36 @@ public abstract class IntentResolver<F extends IntentFilter, R extends Object> {
     }
 
     boolean dumpMap(PrintWriter out, String titlePrefix, String title,
-            String prefix, ArrayMap<String, F[]> map, String packageName,
-            boolean printFilter, boolean collapseDuplicates) {
-        final String eprefix = prefix + "  ";
-        final String fprefix = prefix + "    ";
-        final ArrayMap<Object, MutableInt> found = new ArrayMap<>();
+            String prefix, Map<String, F[]> map, String packageName,
+            boolean printFilter) {
+        String eprefix = prefix + "  ";
+        String fprefix = prefix + "    ";
         boolean printedSomething = false;
         Printer printer = null;
-        for (int mapi=0; mapi<map.size(); mapi++) {
-            F[] a = map.valueAt(mapi);
+        for (Map.Entry<String, F[]> e : map.entrySet()) {
+            F[] a = e.getValue();
             final int N = a.length;
             boolean printedHeader = false;
             F filter;
-            if (collapseDuplicates) {
-                found.clear();
-                for (int i=0; i<N && (filter=a[i]) != null; i++) {
-                    if (packageName != null && !isPackageForFilter(packageName, filter)) {
-                        continue;
-                    }
-                    Object label = filterToLabel(filter);
-                    int index = found.indexOfKey(label);
-                    if (index < 0) {
-                        found.put(label, new MutableInt(1));
-                    } else {
-                        found.valueAt(index).value++;
-                    }
+            for (int i=0; i<N && (filter=a[i]) != null; i++) {
+                if (packageName != null && !isPackageForFilter(packageName, filter)) {
+                    continue;
                 }
-                for (int i=0; i<found.size(); i++) {
-                    if (title != null) {
-                        out.print(titlePrefix); out.println(title);
-                        title = null;
-                    }
-                    if (!printedHeader) {
-                        out.print(eprefix); out.print(map.keyAt(mapi)); out.println(":");
-                        printedHeader = true;
-                    }
-                    printedSomething = true;
-                    dumpFilterLabel(out, fprefix, found.keyAt(i), found.valueAt(i).value);
+                if (title != null) {
+                    out.print(titlePrefix); out.println(title);
+                    title = null;
                 }
-            } else {
-                for (int i=0; i<N && (filter=a[i]) != null; i++) {
-                    if (packageName != null && !isPackageForFilter(packageName, filter)) {
-                        continue;
+                if (!printedHeader) {
+                    out.print(eprefix); out.print(e.getKey()); out.println(":");
+                    printedHeader = true;
+                }
+                printedSomething = true;
+                dumpFilter(out, fprefix, filter);
+                if (printFilter) {
+                    if (printer == null) {
+                        printer = new PrintWriterPrinter(out);
                     }
-                    if (title != null) {
-                        out.print(titlePrefix); out.println(title);
-                        title = null;
-                    }
-                    if (!printedHeader) {
-                        out.print(eprefix); out.print(map.keyAt(mapi)); out.println(":");
-                        printedHeader = true;
-                    }
-                    printedSomething = true;
-                    dumpFilter(out, fprefix, filter);
-                    if (printFilter) {
-                        if (printer == null) {
-                            printer = new PrintWriterPrinter(out);
-                        }
-                        filter.dump(printer, fprefix + "  ");
-                    }
+                    filter.dump(printer, fprefix + "  ");
                 }
             }
         }
@@ -279,32 +250,32 @@ public abstract class IntentResolver<F extends IntentFilter, R extends Object> {
     }
 
     public boolean dump(PrintWriter out, String title, String prefix, String packageName,
-            boolean printFilter, boolean collapseDuplicates) {
+            boolean printFilter) {
         String innerPrefix = prefix + "  ";
         String sepPrefix = "\n" + prefix;
         String curPrefix = title + "\n" + prefix;
         if (dumpMap(out, curPrefix, "Full MIME Types:", innerPrefix,
-                mTypeToFilter, packageName, printFilter, collapseDuplicates)) {
+                mTypeToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         if (dumpMap(out, curPrefix, "Base MIME Types:", innerPrefix,
-                mBaseTypeToFilter, packageName, printFilter, collapseDuplicates)) {
+                mBaseTypeToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         if (dumpMap(out, curPrefix, "Wild MIME Types:", innerPrefix,
-                mWildTypeToFilter, packageName, printFilter, collapseDuplicates)) {
+                mWildTypeToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         if (dumpMap(out, curPrefix, "Schemes:", innerPrefix,
-                mSchemeToFilter, packageName, printFilter, collapseDuplicates)) {
+                mSchemeToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         if (dumpMap(out, curPrefix, "Non-Data Actions:", innerPrefix,
-                mActionToFilter, packageName, printFilter, collapseDuplicates)) {
+                mActionToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         if (dumpMap(out, curPrefix, "MIME Typed Actions:", innerPrefix,
-                mTypedActionToFilter, packageName, printFilter, collapseDuplicates)) {
+                mTypedActionToFilter, packageName, printFilter)) {
             curPrefix = sepPrefix;
         }
         return curPrefix == sepPrefix;
@@ -506,14 +477,6 @@ public abstract class IntentResolver<F extends IntentFilter, R extends Object> {
 
     protected void dumpFilter(PrintWriter out, String prefix, F filter) {
         out.print(prefix); out.println(filter);
-    }
-
-    protected Object filterToLabel(F filter) {
-        return "IntentFilter";
-    }
-
-    protected void dumpFilterLabel(PrintWriter out, String prefix, Object label, int count) {
-        out.print(prefix); out.print(label); out.print(": "); out.println(count);
     }
 
     private final void addFilter(ArrayMap<String, F[]> map, String name, F filter) {
@@ -774,7 +737,7 @@ public abstract class IntentResolver<F extends IntentFilter, R extends Object> {
     /**
      * All filters that have been registered.
      */
-    private final ArraySet<F> mFilters = new ArraySet<F>();
+    private final HashSet<F> mFilters = new HashSet<F>();
 
     /**
      * All of the MIME types that have been registered, such as "image/jpeg",

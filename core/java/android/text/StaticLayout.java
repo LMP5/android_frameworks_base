@@ -383,6 +383,7 @@ public class StaticLayout extends Layout {
                                 okBottom = fitBottom;
                         }
                     } else {
+                        final boolean moreChars;
                         int endPos;
                         int above, below, top, bottom;
                         float currentTextWidth;
@@ -394,6 +395,7 @@ public class StaticLayout extends Layout {
                             top = okTop;
                             bottom = okBottom;
                             currentTextWidth = okWidth;
+                            moreChars = (j + 1 < spanEnd);
                         } else if (fit != here) {
                             endPos = fit;
                             above = fitAscent;
@@ -401,6 +403,7 @@ public class StaticLayout extends Layout {
                             top = fitTop;
                             bottom = fitBottom;
                             currentTextWidth = fitWidth;
+                            moreChars = (j + 1 < spanEnd);
                         } else {
                             // must make progress, so take next character
                             endPos = here + 1;
@@ -414,18 +417,15 @@ public class StaticLayout extends Layout {
                             top = fmTop;
                             bottom = fmBottom;
                             currentTextWidth = widths[here - paraStart];
+                            moreChars = (endPos < spanEnd);
                         }
 
-                        int ellipseEnd = endPos;
-                        if (mMaximumVisibleLineCount == 1 && ellipsize == TextUtils.TruncateAt.MIDDLE) {
-                            ellipseEnd = paraEnd;
-                        }
-                        v = out(source, here, ellipseEnd,
+                        v = out(source, here, endPos,
                                 above, below, top, bottom,
                                 v, spacingmult, spacingadd, chooseHt,chooseHtv, fm, hasTabOrEmoji,
                                 needMultiply, chdirs, dir, easy, bufEnd, includepad, trackpad,
                                 chs, widths, paraStart, ellipsize, ellipsizedWidth,
-                                currentTextWidth, paint, true);
+                                currentTextWidth, paint, moreChars);
 
                         here = endPos;
                         j = here - 1; // restart j-span loop from here, compensating for the j++
@@ -652,7 +652,7 @@ public class StaticLayout extends Layout {
 
         float ellipsisWidth = paint.measureText(
                 (where == TextUtils.TruncateAt.END_SMALL) ?
-                        TextUtils.ELLIPSIS_TWO_DOTS : TextUtils.ELLIPSIS_NORMAL, 0, 1);
+                        ELLIPSIS_TWO_DOTS : ELLIPSIS_NORMAL, 0, 1);
         int ellipsisStart = 0;
         int ellipsisCount = 0;
         int len = lineEnd - lineStart;
@@ -708,7 +708,7 @@ public class StaticLayout extends Layout {
                 int left = 0, right = len;
 
                 float ravail = (avail - ellipsisWidth) / 2;
-                for (right = len; right > 0; right--) {
+                for (right = len; right >= 0; right--) {
                     float w = widths[right - 1 + lineStart - widthStart];
 
                     if (w + rsum > ravail) {

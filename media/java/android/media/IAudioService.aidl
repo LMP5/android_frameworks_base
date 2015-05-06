@@ -19,7 +19,6 @@ package android.media;
 import android.app.PendingIntent;
 import android.bluetooth.BluetoothDevice;
 import android.content.ComponentName;
-import android.media.AudioAttributes;
 import android.media.AudioRoutesInfo;
 import android.media.IAudioFocusDispatcher;
 import android.media.IAudioRoutesObserver;
@@ -30,7 +29,6 @@ import android.media.IRingtonePlayer;
 import android.media.IVolumeController;
 import android.media.Rating;
 import android.media.audiopolicy.AudioPolicyConfig;
-import android.media.audiopolicy.IAudioPolicyCallback;
 import android.net.Uri;
 import android.view.KeyEvent;
 
@@ -78,15 +76,9 @@ interface IAudioService {
 
     void setMicrophoneMute(boolean on, String callingPackage);
 
-    void setRingerModeExternal(int ringerMode, String caller);
+    void setRingerMode(int ringerMode, boolean checkZen);
 
-    void setRingerModeInternal(int ringerMode, String caller);
-
-    int getRingerModeExternal();
-
-    int getRingerModeInternal();
-
-    boolean isValidRingerMode(int ringerMode);
+    int getRingerMode();
 
     void setVibrateSetting(int vibrateType, int vibrateSetting);
 
@@ -122,11 +114,10 @@ interface IAudioService {
 
     boolean isBluetoothA2dpOn();
 
-    int requestAudioFocus(in AudioAttributes aa, int durationHint, IBinder cb,
-            IAudioFocusDispatcher fd, String clientId, String callingPackageName, int flags,
-            IAudioPolicyCallback pcb);
+    int requestAudioFocus(int mainStreamType, int durationHint, IBinder cb,
+            IAudioFocusDispatcher fd, String clientId, String callingPackageName);
 
-    int abandonAudioFocus(IAudioFocusDispatcher fd, String clientId, in AudioAttributes aa);
+    int abandonAudioFocus(IAudioFocusDispatcher fd, String clientId);
 
     void unregisterAudioFocusClient(String clientId);
 
@@ -213,15 +204,19 @@ interface IAudioService {
     int setHdmiSystemAudioSupported(boolean on);
 
     boolean isHdmiSystemAudioSupported();
-    String registerAudioPolicy(in AudioPolicyConfig policyConfig,
-            in IAudioPolicyCallback pcb, boolean hasFocusListener);
-    oneway void unregisterAudioPolicyAsync(in IAudioPolicyCallback pcb);
-    int setFocusPropertiesForPolicy(int duckingBehavior, in IAudioPolicyCallback pcb);
+
+    boolean registerAudioPolicy(in AudioPolicyConfig policyConfig, IBinder cb);
+    oneway void unregisterAudioPolicyAsync(in IBinder cb);
+
     void setRemoteControlClientBrowsedPlayer();
+
     void getRemoteControlClientNowPlayingEntries();
+
     void setRemoteControlClientPlayItem(long uid, int scope);
+
     void updateRemoteControllerOnExistingMediaPlayers();
+
     void addMediaPlayerAndUpdateRemoteController(String packageName);
-			    
+
     void removeMediaPlayerAndUpdateRemoteController(String packageName);
 }

@@ -16,21 +16,13 @@
 
 package com.android.internal.app;
 
-import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.IntentSender;
-import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.util.Log;
-import android.util.Slog;
 
 public class ChooserActivity extends ResolverActivity {
-    private static final String TAG = "ChooserActivity";
-
     private Bundle mReplacementExtras;
-    private IntentSender mChosenComponentSender;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,45 +60,21 @@ public class ChooserActivity extends ResolverActivity {
                 initialIntents[i] = in;
             }
         }
-        mChosenComponentSender = intent.getParcelableExtra(
-                Intent.EXTRA_CHOSEN_COMPONENT_INTENT_SENDER);
         setSafeForwardingMode(true);
         super.onCreate(savedInstanceState, target, title, defaultTitleRes, initialIntents,
                 null, false);
     }
 
-    @Override
-    public Intent getReplacementIntent(ActivityInfo aInfo, Intent defIntent) {
-        Intent result = defIntent;
+    public Intent getReplacementIntent(String packageName, Intent defIntent) {
         if (mReplacementExtras != null) {
-            final Bundle replExtras = mReplacementExtras.getBundle(aInfo.packageName);
+            final Bundle replExtras = mReplacementExtras.getBundle(packageName);
             if (replExtras != null) {
-                result = new Intent(defIntent);
+                final Intent result = new Intent(defIntent);
                 result.putExtras(replExtras);
+                return result;
             }
         }
-        if (aInfo.name.equals(IntentForwarderActivity.FORWARD_INTENT_TO_USER_OWNER)
-                || aInfo.name.equals(IntentForwarderActivity.FORWARD_INTENT_TO_MANAGED_PROFILE)) {
-            result = Intent.createChooser(result,
-                    getIntent().getCharSequenceExtra(Intent.EXTRA_TITLE));
-        }
-        return result;
-    }
-
-    @Override
-    public void onActivityStarted(Intent intent) {
-        if (mChosenComponentSender != null) {
-            final ComponentName target = intent.getComponent();
-            if (target != null) {
-                final Intent fillIn = new Intent().putExtra(Intent.EXTRA_CHOSEN_COMPONENT, target);
-                try {
-                    mChosenComponentSender.sendIntent(this, Activity.RESULT_OK, fillIn, null, null);
-                } catch (IntentSender.SendIntentException e) {
-                    Slog.e(TAG, "Unable to launch supplied IntentSender to report "
-                            + "the chosen component: " + e);
-                }
-            }
-        }
+        return defIntent;
     }
 
     private void modifyTargetIntent(Intent in) {

@@ -321,7 +321,7 @@ public class AnimationUtils {
     private static Interpolator createInterpolatorFromXml(Resources res, Theme theme, XmlPullParser parser)
             throws XmlPullParserException, IOException {
 
-        BaseInterpolator interpolator = null;
+        Interpolator interpolator = null;
 
         // Make sure we are on a start tag.
         int type;
@@ -361,7 +361,10 @@ public class AnimationUtils {
             } else {
                 throw new RuntimeException("Unknown interpolator name: " + parser.getName());
             }
+
         }
+
         return interpolator;
+
     }
 }

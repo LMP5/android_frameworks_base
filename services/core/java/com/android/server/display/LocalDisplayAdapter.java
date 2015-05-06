@@ -41,8 +41,6 @@ import java.util.Arrays;
 final class LocalDisplayAdapter extends DisplayAdapter {
     private static final String TAG = "LocalDisplayAdapter";
 
-    private static final String UNIQUE_ID_PREFIX = "local:";
-
     private static final int[] BUILT_IN_DISPLAY_IDS_TO_SCAN = new int[] {
             SurfaceControl.BUILT_IN_DISPLAY_ID_MAIN,
             SurfaceControl.BUILT_IN_DISPLAY_ID_HDMI,
@@ -142,7 +140,7 @@ final class LocalDisplayAdapter extends DisplayAdapter {
 
         public LocalDisplayDevice(IBinder displayToken, int builtInDisplayId,
                 SurfaceControl.PhysicalDisplayInfo[] physicalDisplayInfos, int activeDisplayInfo) {
-            super(LocalDisplayAdapter.this, displayToken, UNIQUE_ID_PREFIX + builtInDisplayId);
+            super(LocalDisplayAdapter.this, displayToken);
             mBuiltInDisplayId = builtInDisplayId;
             mPhys = new SurfaceControl.PhysicalDisplayInfo(
                     physicalDisplayInfos[activeDisplayInfo]);
@@ -181,7 +179,6 @@ final class LocalDisplayAdapter extends DisplayAdapter {
                 mInfo.appVsyncOffsetNanos = mPhys.appVsyncOffsetNanos;
                 mInfo.presentationDeadlineNanos = mPhys.presentationDeadlineNanos;
                 mInfo.state = mState;
-                mInfo.uniqueId = getUniqueId();
 
                 // Assume that all built-in displays that have secure output (eg. HDCP) also
                 // support compositing from gralloc protected buffers.

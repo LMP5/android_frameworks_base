@@ -18,8 +18,6 @@ package android.animation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
 import android.animation.Keyframe.IntKeyframe;
 import android.animation.Keyframe.FloatKeyframe;
 import android.animation.Keyframe.ObjectKeyframe;
@@ -38,16 +36,16 @@ class KeyframeSet implements Keyframes {
     Keyframe mFirstKeyframe;
     Keyframe mLastKeyframe;
     TimeInterpolator mInterpolator; // only used in the 2-keyframe case
-    List<Keyframe> mKeyframes; // only used when there are not 2 keyframes
+    ArrayList<Keyframe> mKeyframes; // only used when there are not 2 keyframes
     TypeEvaluator mEvaluator;
 
 
     public KeyframeSet(Keyframe... keyframes) {
         mNumKeyframes = keyframes.length;
-        // immutable list
-        mKeyframes = Arrays.asList(keyframes);
-        mFirstKeyframe = keyframes[0];
-        mLastKeyframe = keyframes[mNumKeyframes - 1];
+        mKeyframes = new ArrayList<Keyframe>();
+        mKeyframes.addAll(Arrays.asList(keyframes));
+        mFirstKeyframe = mKeyframes.get(0);
+        mLastKeyframe = mKeyframes.get(mNumKeyframes - 1);
         mInterpolator = mLastKeyframe.getInterpolator();
     }
 
@@ -59,7 +57,7 @@ class KeyframeSet implements Keyframes {
     public void invalidateCache() {
     }
 
-    public List<Keyframe> getKeyframes() {
+    public ArrayList<Keyframe> getKeyframes() {
         return mKeyframes;
     }
 
@@ -179,9 +177,9 @@ class KeyframeSet implements Keyframes {
 
     @Override
     public KeyframeSet clone() {
-        List<Keyframe> keyframes = mKeyframes;
+        ArrayList<Keyframe> keyframes = mKeyframes;
         int numKeyframes = mKeyframes.size();
-        final Keyframe[] newKeyframes = new Keyframe[numKeyframes];
+        Keyframe[] newKeyframes = new Keyframe[numKeyframes];
         for (int i = 0; i < numKeyframes; ++i) {
             newKeyframes[i] = keyframes.get(i).clone();
         }

@@ -42,7 +42,6 @@ class RenderThread;
 enum SyncResult {
     kSync_OK = 0,
     kSync_UIRedrawRequired = 1 << 0,
-    kSync_LostSurfaceRewardIfFound = 1 << 1,
 };
 
 /*

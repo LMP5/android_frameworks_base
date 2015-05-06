@@ -70,19 +70,16 @@ EglManager::EglManager(RenderThread& thread)
         , mEglConfig(0)
         , mEglContext(EGL_NO_CONTEXT)
         , mPBufferSurface(EGL_NO_SURFACE)
-        , mAllowPreserveBuffer(load_dirty_regions_property())
+        , mRequestDirtyRegions(load_dirty_regions_property())
         , mCurrentSurface(EGL_NO_SURFACE)
         , mAtlasMap(NULL)
-        , mAtlasMapSize(0)
-        , mInFrame(false) {
-    mCanSetPreserveBuffer = mAllowPreserveBuffer;
-    ALOGD("Use EGL_SWAP_BEHAVIOR_PRESERVED: %s", mAllowPreserveBuffer ? "true" : "false");
+        , mAtlasMapSize(0) {
+    mCanSetDirtyRegions = mRequestDirtyRegions;
+    ALOGD("Render dirty regions requested: %s", mRequestDirtyRegions ? "true" : "false");
 }
 
 void EglManager::initialize() {
     if (hasEglContext()) return;
-
-    ATRACE_NAME("Creating EGLContext");
 
     mEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     LOG_ALWAYS_FATAL_IF(mEglDisplay == EGL_NO_DISPLAY,
@@ -108,16 +105,15 @@ bool EglManager::hasEglContext() {
 void EglManager::requireGlContext() {
     LOG_ALWAYS_FATAL_IF(mEglDisplay == EGL_NO_DISPLAY, "No EGL context");
 
-    if (!mInFrame) {
-        // We can't be certain about the state of the current surface (whether
-        // or not it is destroyed, for example), so err on the side of using
-        // the pbuffer surface which we fully control
+    // We don't care *WHAT* surface is active, just that one is active to give
+    // us access to the GL context
+    if (mCurrentSurface == EGL_NO_SURFACE) {
         usePBufferSurface();
     }
 }
 
 void EglManager::loadConfig() {
-    EGLint swapBehavior = mCanSetPreserveBuffer ? EGL_SWAP_BEHAVIOR_PRESERVED_BIT : 0;
+    EGLint swapBehavior = mCanSetDirtyRegions ? EGL_SWAP_BEHAVIOR_PRESERVED_BIT : 0;
     EGLint attribs[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
             EGL_RED_SIZE, 8,
@@ -135,10 +131,10 @@ void EglManager::loadConfig() {
     if (!eglChooseConfig(mEglDisplay, attribs, &mEglConfig, num_configs, &num_configs)
             || num_configs != 1) {
         // Failed to get a valid config
-        if (mCanSetPreserveBuffer) {
+        if (mCanSetDirtyRegions) {
             ALOGW("Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...");
             // Try again without dirty regions enabled
-            mCanSetPreserveBuffer = false;
+            mCanSetDirtyRegions = false;
             loadConfig();
         } else {
             LOG_ALWAYS_FATAL("Failed to choose config, error = %s", egl_error_str());
@@ -175,8 +171,7 @@ void EglManager::setTextureAtlas(const sp<GraphicBuffer>& buffer,
 
 void EglManager::initAtlas() {
     if (mAtlasBuffer.get()) {
-        mRenderThread.renderState().assetAtlas().init(mAtlasBuffer,
-                mAtlasMap, mAtlasMapSize);
+        Caches::getInstance().assetAtlas.init(mAtlasBuffer, mAtlasMap, mAtlasMapSize);
     }
 }
 
@@ -257,11 +252,9 @@ void EglManager::beginFrame(EGLSurface surface, EGLint* width, EGLint* height) {
         eglQuerySurface(mEglDisplay, surface, EGL_HEIGHT, height);
     }
     eglBeginFrame(mEglDisplay, surface);
-    mInFrame = true;
 }
 
 bool EglManager::swapBuffers(EGLSurface surface) {
-    mInFrame = false;
     eglSwapBuffers(mEglDisplay, surface);
     EGLint err = eglGetError();
     if (CC_LIKELY(err == EGL_SUCCESS)) {
@@ -280,34 +273,25 @@ bool EglManager::swapBuffers(EGLSurface surface) {
     return false;
 }
 
-void EglManager::cancelFrame() {
-    mInFrame = false;
-}
+bool EglManager::enableDirtyRegions(EGLSurface surface) {
+    if (!mRequestDirtyRegions) return false;
 
-bool EglManager::setPreserveBuffer(EGLSurface surface, bool preserve) {
-    if (CC_UNLIKELY(!mAllowPreserveBuffer)) return false;
-
-    bool preserved = false;
-    if (mCanSetPreserveBuffer) {
-        preserved = eglSurfaceAttrib(mEglDisplay, surface, EGL_SWAP_BEHAVIOR,
-                preserve ? EGL_BUFFER_PRESERVED : EGL_BUFFER_DESTROYED);
-        if (CC_UNLIKELY(!preserved)) {
+    if (mCanSetDirtyRegions) {
+        if (!eglSurfaceAttrib(mEglDisplay, surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED)) {
             ALOGW("Failed to set EGL_SWAP_BEHAVIOR on surface %p, error=%s",
                     (void*) surface, egl_error_str());
+            return false;
         }
+        return true;
     }
-    if (CC_UNLIKELY(!preserved)) {
-        // Maybe it's already set?
-        EGLint swapBehavior;
-        if (eglQuerySurface(mEglDisplay, surface, EGL_SWAP_BEHAVIOR, &swapBehavior)) {
-            preserved = (swapBehavior == EGL_BUFFER_PRESERVED);
-        } else {
-            ALOGW("Failed to query EGL_SWAP_BEHAVIOR on surface %p, error=%p",
-                                (void*) surface, egl_error_str());
-        }
+    // Perhaps it is already enabled?
+    EGLint value;
+    if (!eglQuerySurface(mEglDisplay, surface, EGL_SWAP_BEHAVIOR, &value)) {
+        ALOGW("Failed to query EGL_SWAP_BEHAVIOR on surface %p, error=%p",
+                (void*) surface, egl_error_str());
+        return false;
     }
-
-    return preserved;
+    return value == EGL_BUFFER_PRESERVED;
 }
 
 } /* namespace renderthread */

@@ -221,15 +221,4 @@ public final class Outline {
         mRect = null;
         mRadius = -1.0f;
     }
-
-    /**
-     * Offsets the Outline by (dx,dy)
-     */
-    public void offset(int dx, int dy) {
-        if (mRect != null) {
-            mRect.offset(dx, dy);
-        } else if (mPath != null) {
-            mPath.offset(dx, dy);
-        }
-    }
 }

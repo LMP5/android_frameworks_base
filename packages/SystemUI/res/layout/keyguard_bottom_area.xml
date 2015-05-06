@@ -29,7 +29,6 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/keyguard_indication_margin_bottom"
         android:layout_gravity="bottom|center_horizontal"
-        android:gravity="center_horizontal"
         android:textStyle="italic"
         android:textColor="#ffffff"
         android:textAppearance="?android:attr/textAppearanceSmall" />
@@ -67,5 +66,15 @@
         android:scaleType="center"
         android:tint="#ffffffff"
         android:contentDescription="@string/accessibility_unlock_button" />
+
+    <com.pheelicks.visualizer.VisualizerView
+        android:id="@+id/visualizerView"
+        android:gravity="bottom"
+        android:layout_gravity="bottom"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:visibility="visible"/>
 
 </com.android.systemui.statusbar.phone.KeyguardBottomAreaView>

@@ -241,7 +241,7 @@ public class ActionBarContextView extends AbsActionBarView implements AnimatorLi
         if (!mSplitActionBar) {
             menu.addMenuPresenter(mActionMenuPresenter, mPopupContext);
             mMenuView = (ActionMenuView) mActionMenuPresenter.getMenuView(this);
-            mMenuView.setBackground(null);
+            mMenuView.setBackgroundDrawable(null);
             addView(mMenuView, layoutParams);
         } else {
             // Allow full screen width in split mode.

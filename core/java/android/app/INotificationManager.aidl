@@ -74,7 +74,6 @@ interface INotificationManager
 
     ComponentName getEffectsSuppressor();
     boolean matchesCallFilter(in Bundle extras);
-    boolean isSystemConditionProviderEnabled(String path);
 
     ZenModeConfig getZenModeConfig();
     boolean setZenModeConfig(in ZenModeConfig config);

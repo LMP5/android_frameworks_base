@@ -77,6 +77,4 @@ oneway interface IConnectionService {
     void setLocalCallHold(String callId, int lchState);
 
     void setActiveSubscription(String callId);
-
-    void addParticipantWithConference(String callId, String receipants);
 }

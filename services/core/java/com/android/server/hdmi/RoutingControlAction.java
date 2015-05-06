@@ -119,9 +119,10 @@ final class RoutingControlAction extends HdmiCecFeatureAction {
 
     private void handleReportPowerStatus(int devicePowerStatus) {
         if (isPowerOnOrTransient(getTvPowerStatus())) {
-            tv().updateActiveInput(mCurrentRoutingPath, mNotifyInputChange);
             if (isPowerOnOrTransient(devicePowerStatus)) {
                 sendSetStreamPath();
+            } else {
+                tv().updateActiveInput(mCurrentRoutingPath, mNotifyInputChange);
             }
         }
         finishWithCallback(HdmiControlManager.RESULT_SUCCESS);

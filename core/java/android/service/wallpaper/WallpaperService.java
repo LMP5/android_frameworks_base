@@ -23,7 +23,6 @@ import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.ViewRootImpl;
 import android.view.WindowInsets;
-
 import com.android.internal.R;
 import com.android.internal.os.HandlerCaller;
 import com.android.internal.view.BaseIWindow;
@@ -33,17 +32,18 @@ import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
 import android.app.Service;
 import android.app.WallpaperManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
-import android.hardware.display.DisplayManager;
-import android.hardware.display.DisplayManager.DisplayListener;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.util.Log;
 import android.view.Display;
@@ -139,6 +139,7 @@ public abstract class WallpaperService extends Service {
         
         boolean mInitializing = true;
         boolean mVisible;
+        boolean mScreenOn = true;
         boolean mReportedVisible;
         boolean mDestroyed;
         
@@ -190,10 +191,20 @@ public abstract class WallpaperService extends Service {
         float mPendingYOffsetStep;
         boolean mPendingSync;
         MotionEvent mPendingMove;
-
-        DisplayManager mDisplayManager;
-        Display mDisplay;
-
+        
+        final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                    mScreenOn = true;
+                    reportVisibility();
+                } else if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                    mScreenOn = false;
+                    reportVisibility();
+                }
+            }
+        };
+        
         final BaseSurfaceHolder mSurfaceHolder = new BaseSurfaceHolder() {
             {
                 mRequestedFormat = PixelFormat.RGBX_8888;
@@ -525,8 +536,8 @@ public abstract class WallpaperService extends Service {
             out.print(prefix); out.print("mInitializing="); out.print(mInitializing);
                     out.print(" mDestroyed="); out.println(mDestroyed);
             out.print(prefix); out.print("mVisible="); out.print(mVisible);
+                    out.print(" mScreenOn="); out.print(mScreenOn);
                     out.print(" mReportedVisible="); out.println(mReportedVisible);
-            out.print(prefix); out.print("mDisplay="); out.println(mDisplay);
             out.print(prefix); out.print("mCreated="); out.print(mCreated);
                     out.print(" mSurfaceCreated="); out.print(mSurfaceCreated);
                     out.print(" mIsCreating="); out.print(mIsCreating);
@@ -538,7 +549,7 @@ public abstract class WallpaperService extends Service {
             out.print(prefix); out.print("mType="); out.print(mType);
                     out.print(" mWindowFlags="); out.print(mWindowFlags);
                     out.print(" mCurWindowFlags="); out.println(mCurWindowFlags);
-            out.print(prefix); out.print("mWindowPrivateFlags="); out.print(mWindowPrivateFlags);
+                    out.print(" mWindowPrivateFlags="); out.print(mWindowPrivateFlags);
                     out.print(" mCurWindowPrivateFlags="); out.println(mCurWindowPrivateFlags);
             out.print(prefix); out.print("mVisibleInsets=");
                     out.print(mVisibleInsets.toShortString());
@@ -664,8 +675,7 @@ public abstract class WallpaperService extends Service {
                                 com.android.internal.R.style.Animation_Wallpaper;
                         mInputChannel = new InputChannel();
                         if (mSession.addToDisplay(mWindow, mWindow.mSeq, mLayout, View.VISIBLE,
-                            Display.DEFAULT_DISPLAY, mContentInsets, mStableInsets,
-                                mInputChannel) < 0) {
+                            Display.DEFAULT_DISPLAY, mContentInsets, mInputChannel) < 0) {
                             Log.w(TAG, "Failed to add window while updating wallpaper surface.");
                             return;
                         }
@@ -865,10 +875,13 @@ public abstract class WallpaperService extends Service {
             
             mWindow.setSession(mSession);
 
-            mDisplayManager = (DisplayManager)getSystemService(Context.DISPLAY_SERVICE);
-            mDisplayManager.registerDisplayListener(mDisplayListener, mCaller.getHandler());
-            mDisplay = mDisplayManager.getDisplay(Display.DEFAULT_DISPLAY);
+            mScreenOn = ((PowerManager)getSystemService(Context.POWER_SERVICE)).isScreenOn();
 
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_SCREEN_ON);
+            filter.addAction(Intent.ACTION_SCREEN_OFF);
+            registerReceiver(mReceiver, filter);
+            
             if (DEBUG) Log.v(TAG, "onCreate(): " + this);
             onCreate(mSurfaceHolder);
             
@@ -907,8 +920,7 @@ public abstract class WallpaperService extends Service {
 
         void reportVisibility() {
             if (!mDestroyed) {
-                boolean visible = mVisible
-                        & mDisplay != null && mDisplay.getState() != Display.STATE_OFF;
+                boolean visible = mVisible && mScreenOn;
                 if (mReportedVisible != visible) {
                     mReportedVisible = visible;
                     if (DEBUG) Log.v(TAG, "onVisibilityChanged(" + visible
@@ -1011,11 +1023,7 @@ public abstract class WallpaperService extends Service {
             }
             
             mDestroyed = true;
-
-            if (mDisplayManager != null) {
-                mDisplayManager.unregisterDisplayListener(mDisplayListener);
-            }
-
+            
             if (mVisible) {
                 mVisible = false;
                 if (DEBUG) Log.v(TAG, "onVisibilityChanged(false): " + this);
@@ -1026,7 +1034,9 @@ public abstract class WallpaperService extends Service {
             
             if (DEBUG) Log.v(TAG, "onDestroy(): " + this);
             onDestroy();
-
+            
+            unregisterReceiver(mReceiver);
+            
             if (mCreated) {
                 try {
                     if (DEBUG) Log.v(TAG, "Removing window and destroying surface "
@@ -1051,25 +1061,8 @@ public abstract class WallpaperService extends Service {
                 }
             }
         }
-
-        private final DisplayListener mDisplayListener = new DisplayListener() {
-            @Override
-            public void onDisplayChanged(int displayId) {
-                if (mDisplay.getDisplayId() == displayId) {
-                    reportVisibility();
-                }
-            }
-
-            @Override
-            public void onDisplayRemoved(int displayId) {
-            }
-
-            @Override
-            public void onDisplayAdded(int displayId) {
-            }
-        };
     }
-
+    
     class IWallpaperEngineWrapper extends IWallpaperEngine.Stub
             implements HandlerCaller.Callback {
         private final HandlerCaller mCaller;

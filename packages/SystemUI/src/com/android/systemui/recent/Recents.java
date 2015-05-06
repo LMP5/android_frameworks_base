@@ -18,7 +18,6 @@ package com.android.systemui.recent;
 
 import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -45,29 +44,16 @@ public class Recents extends SystemUI implements RecentsComponent {
 
     // Which recents to use
     boolean mUseAlternateRecents = true;
+    AlternateRecentsComponent mAlternateRecents;
     boolean mBootCompleted = false;
-    static AlternateRecentsComponent sAlternateRecents;
-
-    /** Returns the Recents component, creating a new one in-process if necessary. */
-    public static AlternateRecentsComponent getRecentsComponent(Context context,
-            boolean forceInitialize) {
-        if (sAlternateRecents == null) {
-            sAlternateRecents = new AlternateRecentsComponent(context);
-            if (forceInitialize) {
-                sAlternateRecents.onStart();
-                sAlternateRecents.onBootCompleted();
-            }
-        }
-        return sAlternateRecents;
-    }
 
     @Override
     public void start() {
         if (mUseAlternateRecents) {
-            if (sAlternateRecents == null) {
-                sAlternateRecents = getRecentsComponent(mContext, false);
+            if (mAlternateRecents == null) {
+                mAlternateRecents = new AlternateRecentsComponent(mContext);
             }
-            sAlternateRecents.onStart();
+            mAlternateRecents.onStart();
         }
 
         putComponent(RecentsComponent.class, this);
@@ -76,8 +62,8 @@ public class Recents extends SystemUI implements RecentsComponent {
     @Override
     protected void onBootCompleted() {
         if (mUseAlternateRecents) {
-            if (sAlternateRecents != null) {
-                sAlternateRecents.onBootCompleted();
+            if (mAlternateRecents != null) {
+                mAlternateRecents.onBootCompleted();
             }
         }
         mBootCompleted = true;
@@ -86,14 +72,14 @@ public class Recents extends SystemUI implements RecentsComponent {
     @Override
     public void showRecents(boolean triggeredFromAltTab, View statusBarView) {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onShowRecents(triggeredFromAltTab);
+            mAlternateRecents.onShowRecents(triggeredFromAltTab, statusBarView);
         }
     }
 
     @Override
     public void hideRecents(boolean triggeredFromAltTab, boolean triggeredFromHomeKey) {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onHideRecents(triggeredFromAltTab, triggeredFromHomeKey);
+            mAlternateRecents.onHideRecents(triggeredFromAltTab, triggeredFromHomeKey);
         } else {
             Intent intent = new Intent(RecentsActivity.CLOSE_RECENTS_INTENT);
             intent.setPackage("com.android.systemui");
@@ -107,7 +93,7 @@ public class Recents extends SystemUI implements RecentsComponent {
     public void toggleRecents(Display display, int layoutDirection, View statusBarView) {
         if (mUseAlternateRecents) {
             // Launch the alternate recents if required
-            sAlternateRecents.onToggleRecents();
+            mAlternateRecents.onToggleRecents(statusBarView);
             return;
         }
 
@@ -255,14 +241,14 @@ public class Recents extends SystemUI implements RecentsComponent {
     @Override
     protected void onConfigurationChanged(Configuration newConfig) {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onConfigurationChanged(newConfig);
+            mAlternateRecents.onConfigurationChanged(newConfig);
         }
     }
 
     @Override
     public void preloadRecents() {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onPreloadRecents();
+            mAlternateRecents.onPreloadRecents();
         } else {
             Intent intent = new Intent(RecentsActivity.PRELOAD_INTENT);
             intent.setClassName("com.android.systemui",
@@ -276,7 +262,7 @@ public class Recents extends SystemUI implements RecentsComponent {
     @Override
     public void cancelPreloadingRecents() {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onCancelPreloadingRecents();
+            mAlternateRecents.onCancelPreloadingRecents();
         } else {
             Intent intent = new Intent(RecentsActivity.CANCEL_PRELOAD_INTENT);
             intent.setClassName("com.android.systemui",
@@ -290,21 +276,21 @@ public class Recents extends SystemUI implements RecentsComponent {
     @Override
     public void showNextAffiliatedTask() {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onShowNextAffiliatedTask();
+            mAlternateRecents.onShowNextAffiliatedTask();
         }
     }
 
     @Override
     public void showPrevAffiliatedTask() {
         if (mUseAlternateRecents) {
-            sAlternateRecents.onShowPrevAffiliatedTask();
+            mAlternateRecents.onShowPrevAffiliatedTask();
         }
     }
 
     @Override
     public void setCallback(Callbacks cb) {
         if (mUseAlternateRecents) {
-            sAlternateRecents.setRecentsComponentCallback(cb);
+            mAlternateRecents.setRecentsComponentCallback(cb);
         }
     }
 

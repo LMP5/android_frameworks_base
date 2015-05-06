@@ -88,10 +88,6 @@ private:
      * information.
      */
     float** mRects;
-
-    bool mShowDirtyRegions;
-    SkRect mDirtyRegion;
-    bool mFlashToggle;
 };
 
 } /* namespace uirenderer */

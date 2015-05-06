@@ -34,7 +34,6 @@ import java.io.PrintWriter;
 abstract class DisplayDevice {
     private final DisplayAdapter mDisplayAdapter;
     private final IBinder mDisplayToken;
-    private final String mUniqueId;
 
     // The display device does not manage these properties itself, they are set by
     // the display manager service.  The display device shouldn't really be looking at these.
@@ -47,10 +46,9 @@ abstract class DisplayDevice {
     // within a transaction from performTraversalInTransactionLocked.
     private Surface mCurrentSurface;
 
-    public DisplayDevice(DisplayAdapter displayAdapter, IBinder displayToken, String uniqueId) {
+    public DisplayDevice(DisplayAdapter displayAdapter, IBinder displayToken) {
         mDisplayAdapter = displayAdapter;
         mDisplayToken = displayToken;
-        mUniqueId = uniqueId;
     }
 
     /**
@@ -79,13 +77,6 @@ abstract class DisplayDevice {
      */
     public final String getNameLocked() {
         return getDisplayDeviceInfoLocked().name;
-    }
-
-    /**
-     * Returns the unique id of the display device.
-     */
-    public final String getUniqueId() {
-        return mUniqueId;
     }
 
     /**
@@ -217,7 +208,6 @@ abstract class DisplayDevice {
      */
     public void dumpLocked(PrintWriter pw) {
         pw.println("mAdapter=" + mDisplayAdapter.getName());
-        pw.println("mUniqueId=" + mUniqueId);
         pw.println("mDisplayToken=" + mDisplayToken);
         pw.println("mCurrentLayerStack=" + mCurrentLayerStack);
         pw.println("mCurrentOrientation=" + mCurrentOrientation);

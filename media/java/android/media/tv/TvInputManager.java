@@ -72,17 +72,6 @@ public final class TvInputManager {
     public static final int VIDEO_UNAVAILABLE_REASON_BUFFERING = VIDEO_UNAVAILABLE_REASON_END;
 
     /**
-     * The TV input is in unknown state.
-     * <p>
-     * State for denoting unknown TV input state. The typical use case is when a requested TV
-     * input is removed from the device or it is not registered. Used in
-     * {@code ITvInputManager.getTvInputState()}.
-     * </p>
-     * @hide
-     */
-    public static final int INPUT_STATE_UNKNOWN = -1;
-
-    /**
      * The TV input is connected.
      * <p>
      * State for {@link #getInputState} and {@link
@@ -138,10 +127,10 @@ public final class TvInputManager {
      * <receiver android:name=".TvInputReceiver">
      *     <intent-filter>
      *         <action android:name=
-     *                 "android.media.tv.action.QUERY_CONTENT_RATING_SYSTEMS" />
+     *                 "android.media.tv.TvInputManager.ACTION_QUERY_CONTENT_RATING_SYSTEMS" />
      *     </intent-filter>
      *     <meta-data
-     *             android:name="android.media.tv.metadata.CONTENT_RATING_SYSTEMS"
+     *             android:name="android.media.tv.TvInputManager.META_DATA_CONTENT_RATING_SYSTEMS"
      *             android:resource="@xml/tv_content_rating_systems" />
      * </receiver>}</pre></p>
      * In the above example, the <code>@xml/tv_content_rating_systems</code> resource refers to an
@@ -170,12 +159,12 @@ public final class TvInputManager {
 
     private final Object mLock = new Object();
 
-    // @GuardedBy("mLock")
+    // @GuardedBy(mLock)
     private final List<TvInputCallbackRecord> mCallbackRecords =
             new LinkedList<TvInputCallbackRecord>();
 
     // A mapping from TV input ID to the state of corresponding input.
-    // @GuardedBy("mLock")
+    // @GuardedBy(mLock)
     private final Map<String, Integer> mStateMap = new ArrayMap<String, Integer>();
 
     // A mapping from the sequence number of a session to its SessionCallbackRecord.
@@ -218,7 +207,7 @@ public final class TvInputManager {
 
         /**
          * This is called when the channel of this session is changed by the underlying TV input
-         * without any {@link TvInputManager.Session#tune(Uri)} request.
+         * with out any {@link TvInputManager.Session#tune(Uri)} request.
          *
          * @param session A {@link TvInputManager.Session} associated with this callback.
          * @param channelUri The URI of a channel.
@@ -238,7 +227,7 @@ public final class TvInputManager {
         /**
          * This is called when a track for a given type is selected.
          *
-         * @param session A {@link TvInputManager.Session} associated with this callback.
+         * @param session A {@link TvInputManager.Session} associated with this callback
          * @param type The type of the selected track. The type can be
          *            {@link TvTrackInfo#TYPE_AUDIO}, {@link TvTrackInfo#TYPE_VIDEO} or
          *            {@link TvTrackInfo#TYPE_SUBTITLE}.
@@ -246,18 +235,6 @@ public final class TvInputManager {
          *            track for a given type should be unselected.
          */
         public void onTrackSelected(Session session, int type, String trackId) {
-        }
-
-        /**
-         * This is invoked when the video size has been changed. It is also called when the first
-         * time video size information becomes available after the session is tuned to a specific
-         * channel.
-         *
-         * @param session A {@link TvInputManager.Session} associated with this callback.
-         * @param width The width of the video.
-         * @param height The height of the video.
-         */
-        public void onVideoSizeChanged(Session session, int width, int height) {
         }
 
         /**
@@ -335,13 +312,13 @@ public final class TvInputManager {
         private final Handler mHandler;
         private Session mSession;
 
-        SessionCallbackRecord(SessionCallback sessionCallback,
+        public SessionCallbackRecord(SessionCallback sessionCallback,
                 Handler handler) {
             mSessionCallback = sessionCallback;
             mHandler = handler;
         }
 
-        void postSessionCreated(final Session session) {
+        public void postSessionCreated(final Session session) {
             mSession = session;
             mHandler.post(new Runnable() {
                 @Override
@@ -351,7 +328,7 @@ public final class TvInputManager {
             });
         }
 
-        void postSessionReleased() {
+        public void postSessionReleased() {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -360,7 +337,7 @@ public final class TvInputManager {
             });
         }
 
-        void postChannelRetuned(final Uri channelUri) {
+        public void postChannelRetuned(final Uri channelUri) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -369,34 +346,49 @@ public final class TvInputManager {
             });
         }
 
-        void postTracksChanged(final List<TvTrackInfo> tracks) {
+        public void postTracksChanged(final List<TvTrackInfo> tracks) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    mSession.mAudioTracks.clear();
+                    mSession.mVideoTracks.clear();
+                    mSession.mSubtitleTracks.clear();
+                    for (TvTrackInfo track : tracks) {
+                        if (track.getType() == TvTrackInfo.TYPE_AUDIO) {
+                            mSession.mAudioTracks.add(track);
+                        } else if (track.getType() == TvTrackInfo.TYPE_VIDEO) {
+                            mSession.mVideoTracks.add(track);
+                        } else if (track.getType() == TvTrackInfo.TYPE_SUBTITLE) {
+                            mSession.mSubtitleTracks.add(track);
+                        } else {
+                            // Silently ignore.
+                        }
+                    }
                     mSessionCallback.onTracksChanged(mSession, tracks);
                 }
             });
         }
 
-        void postTrackSelected(final int type, final String trackId) {
+        public void postTrackSelected(final int type, final String trackId) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    if (type == TvTrackInfo.TYPE_AUDIO) {
+                        mSession.mSelectedAudioTrackId = trackId;
+                    } else if (type == TvTrackInfo.TYPE_VIDEO) {
+                        mSession.mSelectedVideoTrackId = trackId;
+                    } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
+                        mSession.mSelectedSubtitleTrackId = trackId;
+                    } else {
+                        // Silently ignore.
+                        return;
+                    }
                     mSessionCallback.onTrackSelected(mSession, type, trackId);
                 }
             });
         }
 
-        void postVideoSizeChanged(final int width, final int height) {
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mSessionCallback.onVideoSizeChanged(mSession, width, height);
-                }
-            });
-        }
-
-        void postVideoAvailable() {
+        public void postVideoAvailable() {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -405,7 +397,7 @@ public final class TvInputManager {
             });
         }
 
-        void postVideoUnavailable(final int reason) {
+        public void postVideoUnavailable(final int reason) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -414,7 +406,7 @@ public final class TvInputManager {
             });
         }
 
-        void postContentAllowed() {
+        public void postContentAllowed() {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -423,7 +415,7 @@ public final class TvInputManager {
             });
         }
 
-        void postContentBlocked(final TvContentRating rating) {
+        public void postContentBlocked(final TvContentRating rating) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -432,7 +424,7 @@ public final class TvInputManager {
             });
         }
 
-        void postLayoutSurface(final int left, final int top, final int right,
+        public void postLayoutSurface(final int left, final int top, final int right,
                 final int bottom) {
             mHandler.post(new Runnable() {
                 @Override
@@ -442,7 +434,7 @@ public final class TvInputManager {
             });
         }
 
-        void postSessionEvent(final String eventType, final Bundle eventArgs) {
+        public void postSessionEvent(final String eventType, final Bundle eventArgs) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -618,10 +610,7 @@ public final class TvInputManager {
                         Log.e(TAG, "Callback not found for seq " + seq);
                         return;
                     }
-                    if (record.mSession.updateTracks(tracks)) {
-                        record.postTracksChanged(tracks);
-                        postVideoSizeChangedIfNeededLocked(record);
-                    }
+                    record.postTracksChanged(tracks);
                 }
             }
 
@@ -633,17 +622,7 @@ public final class TvInputManager {
                         Log.e(TAG, "Callback not found for seq " + seq);
                         return;
                     }
-                    if (record.mSession.updateTrackSelection(type, trackId)) {
-                        record.postTrackSelected(type, trackId);
-                        postVideoSizeChangedIfNeededLocked(record);
-                    }
-                }
-            }
-
-            private void postVideoSizeChangedIfNeededLocked(SessionCallbackRecord record) {
-                TvTrackInfo track = record.mSession.getVideoTrackToNotify();
-                if (track != null) {
-                    record.postVideoSizeChanged(track.getVideoWidth(), track.getVideoHeight());
+                    record.postTrackSelected(type, trackId);
                 }
             }
 
@@ -762,19 +741,9 @@ public final class TvInputManager {
         try {
             if (mService != null) {
                 mService.registerCallback(mManagerCallback, mUserId);
-                List<TvInputInfo> infos = mService.getTvInputList(mUserId);
-                synchronized (mLock) {
-                    for (TvInputInfo info : infos) {
-                        String inputId = info.getId();
-                        int state = mService.getTvInputState(inputId, mUserId);
-                        if (state != INPUT_STATE_UNKNOWN) {
-                            mStateMap.put(inputId, state);
-                        }
-                    }
-                }
             }
         } catch (RemoteException e) {
-            Log.e(TAG, "TvInputManager initialization failed: " + e);
+            Log.e(TAG, "mService.registerCallback failed: " + e);
         }
     }
 
@@ -809,7 +778,7 @@ public final class TvInputManager {
     }
 
     /**
-     * Returns the state of a given TV input. It returns one of the following:
+     * Returns the state of a given TV input. It retuns one of the following:
      * <ul>
      * <li>{@link #INPUT_STATE_CONNECTED}
      * <li>{@link #INPUT_STATE_CONNECTED_STANDBY}
@@ -1033,12 +1002,6 @@ public final class TvInputManager {
     /**
      * Returns the TvStreamConfig list of the given TV input.
      *
-     * If you are using {@link Hardware} object from {@link
-     * #acquireTvInputHardware}, you should get the list of available streams
-     * from {@link HardwareCallback#onStreamConfigChanged} method, not from
-     * here. This method is designed to be used with {@link #captureFrame} in
-     * capture scenarios specifically and not suitable for any other use.
-     *
      * @param inputId the id of the TV input.
      * @return List of {@link TvStreamConfig} which is available for capturing
      *   of the given TV input.
@@ -1170,24 +1133,12 @@ public final class TvInputManager {
         private IBinder mToken;
         private TvInputEventSender mSender;
         private InputChannel mChannel;
-
-        private final Object mTrackLock = new Object();
-        // @GuardedBy("mTrackLock")
         private final List<TvTrackInfo> mAudioTracks = new ArrayList<TvTrackInfo>();
-        // @GuardedBy("mTrackLock")
         private final List<TvTrackInfo> mVideoTracks = new ArrayList<TvTrackInfo>();
-        // @GuardedBy("mTrackLock")
         private final List<TvTrackInfo> mSubtitleTracks = new ArrayList<TvTrackInfo>();
-        // @GuardedBy("mTrackLock")
         private String mSelectedAudioTrackId;
-        // @GuardedBy("mTrackLock")
         private String mSelectedVideoTrackId;
-        // @GuardedBy("mTrackLock")
         private String mSelectedSubtitleTrackId;
-        // @GuardedBy("mTrackLock")
-        private int mVideoWidth;
-        // @GuardedBy("mTrackLock")
-        private int mVideoHeight;
 
         private Session(IBinder token, InputChannel channel, ITvInputManager service, int userId,
                 int seq, SparseArray<SessionCallbackRecord> sessionCallbackRecordMap) {
@@ -1322,16 +1273,12 @@ public final class TvInputManager {
                 Log.w(TAG, "The session has been already released");
                 return;
             }
-            synchronized (mTrackLock) {
-                mAudioTracks.clear();
-                mVideoTracks.clear();
-                mSubtitleTracks.clear();
-                mSelectedAudioTrackId = null;
-                mSelectedVideoTrackId = null;
-                mSelectedSubtitleTrackId = null;
-                mVideoWidth = 0;
-                mVideoHeight = 0;
-            }
+            mAudioTracks.clear();
+            mVideoTracks.clear();
+            mSubtitleTracks.clear();
+            mSelectedAudioTrackId = null;
+            mSelectedVideoTrackId = null;
+            mSelectedSubtitleTrackId = null;
             try {
                 mService.tune(mToken, channelUri, params, mUserId);
             } catch (RemoteException e) {
@@ -1367,25 +1314,23 @@ public final class TvInputManager {
          * @see #getTracks
          */
         public void selectTrack(int type, String trackId) {
-            synchronized (mTrackLock) {
-                if (type == TvTrackInfo.TYPE_AUDIO) {
-                    if (trackId != null && !containsTrack(mAudioTracks, trackId)) {
-                        Log.w(TAG, "Invalid audio trackId: " + trackId);
-                        return;
-                    }
-                } else if (type == TvTrackInfo.TYPE_VIDEO) {
-                    if (trackId != null && !containsTrack(mVideoTracks, trackId)) {
-                        Log.w(TAG, "Invalid video trackId: " + trackId);
-                        return;
-                    }
-                } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
-                    if (trackId != null && !containsTrack(mSubtitleTracks, trackId)) {
-                        Log.w(TAG, "Invalid subtitle trackId: " + trackId);
-                        return;
-                    }
-                } else {
-                    throw new IllegalArgumentException("invalid type: " + type);
+            if (type == TvTrackInfo.TYPE_AUDIO) {
+                if (trackId != null && !containsTrack(mAudioTracks, trackId)) {
+                    Log.w(TAG, "Invalid audio trackId: " + trackId);
+                    return;
                 }
+            } else if (type == TvTrackInfo.TYPE_VIDEO) {
+                if (trackId != null && !containsTrack(mVideoTracks, trackId)) {
+                    Log.w(TAG, "Invalid video trackId: " + trackId);
+                    return;
+                }
+            } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
+                if (trackId != null && !containsTrack(mSubtitleTracks, trackId)) {
+                    Log.w(TAG, "Invalid subtitle trackId: " + trackId);
+                    return;
+                }
+            } else {
+                throw new IllegalArgumentException("invalid type: " + type);
             }
             if (mToken == null) {
                 Log.w(TAG, "The session has been already released");
@@ -1416,23 +1361,21 @@ public final class TvInputManager {
          * @return the list of tracks for the given type.
          */
         public List<TvTrackInfo> getTracks(int type) {
-            synchronized (mTrackLock) {
-                if (type == TvTrackInfo.TYPE_AUDIO) {
-                    if (mAudioTracks == null) {
-                        return null;
-                    }
-                    return new ArrayList<TvTrackInfo>(mAudioTracks);
-                } else if (type == TvTrackInfo.TYPE_VIDEO) {
-                    if (mVideoTracks == null) {
-                        return null;
-                    }
-                    return new ArrayList<TvTrackInfo>(mVideoTracks);
-                } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
-                    if (mSubtitleTracks == null) {
-                        return null;
-                    }
-                    return new ArrayList<TvTrackInfo>(mSubtitleTracks);
+            if (type == TvTrackInfo.TYPE_AUDIO) {
+                if (mAudioTracks == null) {
+                    return null;
                 }
+                return mAudioTracks;
+            } else if (type == TvTrackInfo.TYPE_VIDEO) {
+                if (mVideoTracks == null) {
+                    return null;
+                }
+                return mVideoTracks;
+            } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
+                if (mSubtitleTracks == null) {
+                    return null;
+                }
+                return mSubtitleTracks;
             }
             throw new IllegalArgumentException("invalid type: " + type);
         }
@@ -1445,86 +1388,14 @@ public final class TvInputManager {
          * @see #selectTrack
          */
         public String getSelectedTrack(int type) {
-            synchronized (mTrackLock) {
-                if (type == TvTrackInfo.TYPE_AUDIO) {
-                    return mSelectedAudioTrackId;
-                } else if (type == TvTrackInfo.TYPE_VIDEO) {
-                    return mSelectedVideoTrackId;
-                } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
-                    return mSelectedSubtitleTrackId;
-                }
+            if (type == TvTrackInfo.TYPE_AUDIO) {
+                return mSelectedAudioTrackId;
+            } else if (type == TvTrackInfo.TYPE_VIDEO) {
+                return mSelectedVideoTrackId;
+            } else if (type == TvTrackInfo.TYPE_SUBTITLE) {
+                return mSelectedSubtitleTrackId;
             }
             throw new IllegalArgumentException("invalid type: " + type);
-        }
-
-        /**
-         * Responds to onTracksChanged() and updates the internal track information. Returns true if
-         * there is an update.
-         */
-        boolean updateTracks(List<TvTrackInfo> tracks) {
-            synchronized (mTrackLock) {
-                mAudioTracks.clear();
-                mVideoTracks.clear();
-                mSubtitleTracks.clear();
-                for (TvTrackInfo track : tracks) {
-                    if (track.getType() == TvTrackInfo.TYPE_AUDIO) {
-                        mAudioTracks.add(track);
-                    } else if (track.getType() == TvTrackInfo.TYPE_VIDEO) {
-                        mVideoTracks.add(track);
-                    } else if (track.getType() == TvTrackInfo.TYPE_SUBTITLE) {
-                        mSubtitleTracks.add(track);
-                    }
-                }
-                return !mAudioTracks.isEmpty() || !mVideoTracks.isEmpty()
-                        || !mSubtitleTracks.isEmpty();
-            }
-        }
-
-        /**
-         * Responds to onTrackSelected() and updates the internal track selection information.
-         * Returns true if there is an update.
-         */
-        boolean updateTrackSelection(int type, String trackId) {
-            synchronized (mTrackLock) {
-                if (type == TvTrackInfo.TYPE_AUDIO && trackId != mSelectedAudioTrackId) {
-                    mSelectedAudioTrackId = trackId;
-                    return true;
-                } else if (type == TvTrackInfo.TYPE_VIDEO && trackId != mSelectedVideoTrackId) {
-                    mSelectedVideoTrackId = trackId;
-                    return true;
-                } else if (type == TvTrackInfo.TYPE_SUBTITLE
-                        && trackId != mSelectedSubtitleTrackId) {
-                    mSelectedSubtitleTrackId = trackId;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Returns the new/updated video track that contains new video size information. Returns
-         * null if there is no video track to notify. Subsequent calls of this method results in a
-         * non-null video track returned only by the first call and null returned by following
-         * calls. The caller should immediately notify of the video size change upon receiving the
-         * track.
-         */
-        TvTrackInfo getVideoTrackToNotify() {
-            synchronized (mTrackLock) {
-                if (!mVideoTracks.isEmpty() && mSelectedVideoTrackId != null) {
-                    for (TvTrackInfo track : mVideoTracks) {
-                        if (track.getId().equals(mSelectedVideoTrackId)) {
-                            int videoWidth = track.getVideoWidth();
-                            int videoHeight = track.getVideoHeight();
-                            if (mVideoWidth != videoWidth || mVideoHeight != videoHeight) {
-                                mVideoWidth = videoWidth;
-                                mVideoHeight = videoHeight;
-                                return track;
-                            }
-                        }
-                    }
-                }
-            }
-            return null;
         }
 
         /**

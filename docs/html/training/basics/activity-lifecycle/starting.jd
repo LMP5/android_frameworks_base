@@ -1,8 +1,10 @@
 page.title=Starting an Activity
-page.tags=activity lifecycle
-helpoutsWidget=true
+parent.title=Managing the Activity Lifecycle
+parent.link=index.html
 
 trainingnavtop=true
+next.title=Pausing and Resuming an Activity
+next.link=pausing.html
 
 @jd:body
 

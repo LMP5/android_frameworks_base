@@ -16,7 +16,6 @@
 package android.animation;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This interface abstracts a collection of Keyframe objects and is called by
@@ -63,7 +62,7 @@ interface Keyframes extends Cloneable {
      * @return A list of all Keyframes contained by this. This may return null if this is
      * not made up of Keyframes.
      */
-    List<Keyframe> getKeyframes();
+    ArrayList<Keyframe> getKeyframes();
 
     Keyframes clone();
 

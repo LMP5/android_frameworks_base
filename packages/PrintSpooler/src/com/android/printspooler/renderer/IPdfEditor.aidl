@@ -18,7 +18,6 @@ package com.android.printspooler.renderer;
 
 import android.os.ParcelFileDescriptor;
 import android.print.PageRange;
-import android.print.PrintAttributes;
 
 /**
  * Interface for communication with a remote pdf editor.
@@ -26,7 +25,6 @@ import android.print.PrintAttributes;
 interface IPdfEditor {
     int openDocument(in ParcelFileDescriptor source);
     void removePages(in PageRange[] pages);
-    void applyPrintAttributes(in PrintAttributes attributes);
     void write(in ParcelFileDescriptor destination);
     void closeDocument();
 }

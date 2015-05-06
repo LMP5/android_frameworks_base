@@ -191,10 +191,10 @@ final class ConnectionServiceAdapter implements DeathRecipient {
         }
     }
 
-    void setConnectionCapabilities(String callId, int capabilities) {
+    void setCallCapabilities(String callId, int capabilities) {
         for (IConnectionServiceAdapter adapter : mAdapters) {
             try {
-                adapter.setConnectionCapabilities(callId, capabilities);
+                adapter.setCallCapabilities(callId, capabilities);
             } catch (RemoteException ignored) {
             }
         }
@@ -246,15 +246,6 @@ final class ConnectionServiceAdapter implements DeathRecipient {
         for (IConnectionServiceAdapter adapter : mAdapters) {
             try {
                 adapter.onPostDialWait(callId, remaining);
-            } catch (RemoteException ignored) {
-            }
-        }
-    }
-
-    void onPostDialChar(String callId, char nextChar) {
-        for (IConnectionServiceAdapter adapter : mAdapters) {
-            try {
-                adapter.onPostDialChar(callId, nextChar);
             } catch (RemoteException ignored) {
             }
         }

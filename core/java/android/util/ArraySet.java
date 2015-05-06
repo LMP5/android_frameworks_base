@@ -245,20 +245,13 @@ public final class ArraySet<E> implements Collection<E>, Set<E> {
     /**
      * Create a new ArraySet with the mappings from the given ArraySet.
      */
-    public ArraySet(ArraySet<E> set) {
+    public ArraySet(ArraySet set) {
         this();
         if (set != null) {
             addAll(set);
         }
     }
 
-    /** {@hide} */
-    public ArraySet(Collection<E> set) {
-        this();
-        if (set != null) {
-            addAll(set);
-        }
-    }
 
     /**
      * Make the array map empty.  All storage is released.

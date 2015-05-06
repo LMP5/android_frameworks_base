@@ -192,9 +192,6 @@ public class NetworkControllerImpl extends BroadcastReceiver
 
     protected static boolean mAppopsStrictEnabled = false;
 
-    // The current user ID.
-    private int mCurrentUserId;
-
     public interface SignalCluster {
         void setWifiIndicators(boolean visible, int strengthIcon,
 		int activityIcon, String contentDescription);
@@ -205,7 +202,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
         void setIsAirplaneMode(boolean is, int airplaneIcon);
     }
 
-    private final AccessPointControllerImpl mAccessPoints;
+    private final WifiAccessPointController mAccessPoints;
     private final MobileDataController mMobileDataController;
 
     /**
@@ -274,8 +271,7 @@ public class NetworkControllerImpl extends BroadcastReceiver
         updateAirplaneMode();
 
         mLastLocale = mContext.getResources().getConfiguration().locale;
-        mAccessPoints = new AccessPointControllerImpl(mContext);
-        mAccessPoints.setNetworkController(this);
+        mAccessPoints = new WifiAccessPointController(mContext);
         mMobileDataController = new MobileDataController(mContext);
         mMobileDataController.setCallback(new MobileDataController.Callback() {
             @Override
@@ -283,16 +279,6 @@ public class NetworkControllerImpl extends BroadcastReceiver
                 notifyMobileDataEnabled(enabled);
             }
         });
-    }
-
-    public int getConnectedWifiLevel() {
-        //return mWifiSignalController.getState().level;
-        return mWifiLevel;
-    }
-
-    @Override
-    public AccessPointController getAccessPointController() {
-        return mAccessPoints;
     }
 
     private void notifyMobileDataEnabled(boolean enabled) {
@@ -398,6 +384,26 @@ public class NetworkControllerImpl extends BroadcastReceiver
     }
 
     @Override
+    public void addAccessPointCallback(AccessPointCallback callback) {
+        mAccessPoints.addCallback(callback);
+    }
+
+    @Override
+    public void removeAccessPointCallback(AccessPointCallback callback) {
+        mAccessPoints.removeCallback(callback);
+    }
+
+    @Override
+    public void scanForAccessPoints() {
+        mAccessPoints.scan();
+    }
+
+    @Override
+    public void connect(AccessPoint ap) {
+        mAccessPoints.connect(ap);
+    }
+
+    @Override
     public void setWifiEnabled(final boolean enabled) {
         new AsyncTask<Void, Void, Void>() {
             @Override
@@ -413,14 +419,6 @@ public class NetworkControllerImpl extends BroadcastReceiver
                 return null;
             }
         }.execute();
-    }
-
-    @Override
-    public void onUserSwitched(int newUserId) {
-        mCurrentUserId = newUserId;
-        mAccessPoints.onUserSwitched(newUserId);
-        //updateConnectivity();
-        //refreshCarrierLabel();
     }
 
     @Override

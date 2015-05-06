@@ -60,14 +60,8 @@ class Task {
         return removed;
     }
 
-    void setSendingToBottom(boolean toBottom) {
-        for (int appTokenNdx = 0; appTokenNdx < mAppTokens.size(); appTokenNdx++) {
-            mAppTokens.get(appTokenNdx).sendingToBottom = toBottom;
-        }
-    }
-
     @Override
     public String toString() {
-        return "{taskId=" + taskId + " appTokens=" + mAppTokens + " mdr=" + mDeferRemoval + "}";
+        return "{taskId=" + taskId + " appTokens=" + mAppTokens + "}";
     }
 }

@@ -386,21 +386,21 @@ public class ImageView extends View {
      */
     @android.view.RemotableViewMethod
     public void setImageResource(int resId) {
-        // The resource configuration may have changed, so we should always
-        // try to load the resource even if the resId hasn't changed.
-        final int oldWidth = mDrawableWidth;
-        final int oldHeight = mDrawableHeight;
+        if (mUri != null || mResource != resId) {
+            final int oldWidth = mDrawableWidth;
+            final int oldHeight = mDrawableHeight;
 
-        updateDrawable(null);
-        mResource = resId;
-        mUri = null;
+            updateDrawable(null);
+            mResource = resId;
+            mUri = null;
 
-        resolveUri();
+            resolveUri();
 
-        if (oldWidth != mDrawableWidth || oldHeight != mDrawableHeight) {
-            requestLayout();
+            if (oldWidth != mDrawableWidth || oldHeight != mDrawableHeight) {
+                requestLayout();
+            }
+            invalidate();
         }
-        invalidate();
     }
 
     /**
@@ -526,12 +526,6 @@ public class ImageView extends View {
 
             if (mHasDrawableTintMode) {
                 mDrawable.setTintMode(mDrawableTintMode);
-            }
-
-            // The drawable (or one of its children) may not have been
-            // stateful before applying the tint, so let's try again.
-            if (mDrawable.isStateful()) {
-                mDrawable.setState(getDrawableState());
             }
         }
     }
@@ -826,7 +820,6 @@ public class ImageView extends View {
             mDrawableHeight = d.getIntrinsicHeight();
             applyImageTint();
             applyColorMod();
-
             configureBounds();
         } else {
             mDrawableWidth = mDrawableHeight = -1;
@@ -1127,9 +1120,6 @@ public class ImageView extends View {
 
     /** @hide */
     public void animateTransform(Matrix matrix) {
-        if (mDrawable == null) {
-            return;
-        }
         if (matrix == null) {
             mDrawable.setBounds(0, 0, getWidth(), getHeight());
         } else {

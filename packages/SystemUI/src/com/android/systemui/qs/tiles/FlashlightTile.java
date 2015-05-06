@@ -32,10 +32,6 @@ public class FlashlightTile extends QSTile<QSTile.BooleanState> implements
      * still available because it was recently on. */
     private static final long RECENTLY_ON_DURATION_MILLIS = 500;
 
-    private final AnimationIcon mEnable
-            = new AnimationIcon(R.drawable.ic_signal_flashlight_enable_animation);
-    private final AnimationIcon mDisable
-            = new AnimationIcon(R.drawable.ic_signal_flashlight_disable_animation);
     private final TorchManager mTorchManager;
     private long mWasLastOn;
     private boolean mTorchAvailable;
@@ -74,7 +70,7 @@ public class FlashlightTile extends QSTile<QSTile.BooleanState> implements
         }
         boolean newState = !mState.value;
         mTorchManager.setTorchEnabled(newState);
-        refreshState(newState ? UserBoolean.USER_TRUE : UserBoolean.USER_FALSE);
+        refreshState(newState);
     }
 
     @Override
@@ -83,8 +79,8 @@ public class FlashlightTile extends QSTile<QSTile.BooleanState> implements
             mWasLastOn = SystemClock.uptimeMillis();
         }
 
-        if (arg instanceof UserBoolean) {
-            state.value = ((UserBoolean) arg).value;
+        if (arg instanceof Boolean) {
+            state.value = (Boolean) arg;
         }
 
         if (!state.value && mWasLastOn != 0) {
@@ -98,9 +94,8 @@ public class FlashlightTile extends QSTile<QSTile.BooleanState> implements
 
         state.visible = mWasLastOn != 0 || mTorchAvailable;
         state.label = mHost.getContext().getString(R.string.quick_settings_flashlight_label);
-        final AnimationIcon icon = state.value ? mEnable : mDisable;
-        icon.setAllowAnimation(arg instanceof UserBoolean && ((UserBoolean) arg).userInitiated);
-        state.icon = icon;
+        state.iconId = state.value
+                ? R.drawable.ic_qs_flashlight_on : R.drawable.ic_qs_flashlight_off;
         int onOrOffId = state.value
                 ? R.string.accessibility_quick_settings_flashlight_on
                 : R.string.accessibility_quick_settings_flashlight_off;
@@ -118,12 +113,12 @@ public class FlashlightTile extends QSTile<QSTile.BooleanState> implements
 
     @Override
     public void onTorchStateChanged(boolean on) {
-        refreshState(on ? UserBoolean.BACKGROUND_TRUE : UserBoolean.BACKGROUND_FALSE);
+        refreshState(on);
     }
 
     @Override
     public void onTorchError() {
-        refreshState(UserBoolean.BACKGROUND_FALSE);
+        refreshState(false);
     }
 
     @Override

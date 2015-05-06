@@ -19,9 +19,6 @@ package android.content.res;
 import android.app.ComposedIconInfo;
 import android.app.IconPackHelper;
 import android.app.IconPackHelper.IconCustomizer;
-import android.animation.Animator;
-import android.animation.StateListAnimator;
-import android.annotation.NonNull;
 import android.util.Pools.SynchronizedPool;
 import android.view.ViewDebug;
 import com.android.internal.util.XmlUtils;
@@ -137,10 +134,6 @@ public class Resources {
             new ArrayMap<String, LongSparseArray<WeakReference<ConstantState>>>();
     private final LongSparseArray<WeakReference<ColorStateList>> mColorStateListCache =
             new LongSparseArray<WeakReference<ColorStateList>>();
-    private final ConfigurationBoundResourceCache<Animator> mAnimatorCache =
-            new ConfigurationBoundResourceCache<Animator>(this);
-    private final ConfigurationBoundResourceCache<StateListAnimator> mStateListAnimatorCache =
-            new ConfigurationBoundResourceCache<StateListAnimator>(this);
 
     private TypedValue mTmpValue = new TypedValue();
     private boolean mPreloading;
@@ -212,24 +205,6 @@ public class Resources {
     }
 
     /**
-     * Used by AnimatorInflater.
-     *
-     * @hide
-     */
-    public ConfigurationBoundResourceCache<Animator> getAnimatorCache() {
-        return mAnimatorCache;
-    }
-
-    /**
-     * Used by AnimatorInflater.
-     *
-     * @hide
-     */
-    public ConfigurationBoundResourceCache<StateListAnimator> getStateListAnimatorCache() {
-        return mStateListAnimatorCache;
-    }
-
-    /**
      * This exception is thrown by the resource APIs when a requested resource
      * can not be found.
      */
@@ -272,7 +247,6 @@ public class Resources {
             CompatibilityInfo compatInfo, IBinder token) {
         mAssets = assets;
         mMetrics.setToDefaults();
-        mMetrics.updateDensity();
         if (compatInfo != null) {
             mCompatibilityInfo = compatInfo;
         }
@@ -767,13 +741,10 @@ public class Resources {
      * @throws NotFoundException Throws NotFoundException if the given ID does
      *         not exist.
      * @see #getDrawable(int, Theme)
-     * @deprecated Use {@link #getDrawable(int, Theme)} instead.
      */
-    @Deprecated
-    @Nullable
     public Drawable getDrawable(int id) throws NotFoundException {
         final Drawable d = getDrawable(id, null);
-        if (d != null && d.canApplyTheme()) {
+        if (d.canApplyTheme()) {
             Log.w(TAG, "Drawable " + getResourceName(id) + " has unresolved theme "
                     + "attributes! Consider using Resources.getDrawable(int, Theme) or "
                     + "Context.getDrawable(int).", new RuntimeException());
@@ -795,7 +766,6 @@ public class Resources {
      * @throws NotFoundException Throws NotFoundException if the given ID does
      *         not exist.
      */
-    @Nullable
     public Drawable getDrawable(int id, @Nullable Theme theme) throws NotFoundException {
         return getDrawable(id, theme, true);
     }
@@ -867,10 +837,7 @@ public class Resources {
      * @throws NotFoundException Throws NotFoundException if the given ID does
      *             not exist.
      * @see #getDrawableForDensity(int, int, Theme)
-     * @deprecated Use {@link #getDrawableForDensity(int, int, Theme)} instead.
      */
-    @Deprecated
-    @Nullable
     public Drawable getDrawableForDensity(int id, int density) throws NotFoundException {
         return getDrawableForDensity(id, density, null);
     }
@@ -889,7 +856,6 @@ public class Resources {
      * @throws NotFoundException Throws NotFoundException if the given ID does
      *             not exist.
      */
-    @Nullable
     public Drawable getDrawableForDensity(int id, int density, @Nullable Theme theme) {
         return getDrawableForDensity(id, density, theme, true);
     }
@@ -1671,21 +1637,20 @@ public class Resources {
          * contents of the typed array are ultimately filled in by
          * {@link Resources#getValue}.
          *
-         * @param values The base set of attribute values, must be equal in
-         *               length to {@code attrs}. All values must be of type
-         *               {@link TypedValue#TYPE_ATTRIBUTE}.
+         * @param values The base set of attribute values, must be equal
+         *               in length to {@code attrs} or {@code null}. All values
+         *               must be of type {@link TypedValue#TYPE_ATTRIBUTE}.
          * @param attrs The desired attributes to be retrieved.
          * @return Returns a TypedArray holding an array of the attribute
          *         values. Be sure to call {@link TypedArray#recycle()}
          *         when done with it.
          * @hide
          */
-        @NonNull
-        public TypedArray resolveAttributes(@NonNull int[] values, @NonNull int[] attrs) {
+        public TypedArray resolveAttributes(int[] values, int[] attrs) {
             final int len = attrs.length;
-            if (values == null || len != values.length) {
+            if (values != null && len != values.length) {
                 throw new IllegalArgumentException(
-                        "Base attribute values must the same length as attrs");
+                        "Base attribute values must be null or the same length as attrs");
             }
 
             final TypedArray array = TypedArray.obtain(Resources.this, len);
@@ -1909,7 +1874,31 @@ public class Resources {
             // the framework.
             mCompatibilityInfo.applyToDisplayMetrics(mMetrics);
 
-            int configChanges = calcConfigChanges(config);
+            int configChanges = 0xfffffff;
+            if (config != null) {
+                mTmpConfig.setTo(config);
+                int density = config.densityDpi;
+                if (density == Configuration.DENSITY_DPI_UNDEFINED) {
+                    density = mMetrics.noncompatDensityDpi;
+                }
+
+                mCompatibilityInfo.applyToConfiguration(density, mTmpConfig);
+
+                if (mTmpConfig.locale == null) {
+                    mTmpConfig.locale = Locale.getDefault();
+                    mTmpConfig.setLayoutDirection(mTmpConfig.locale);
+                }
+                configChanges = mConfiguration.updateFrom(mTmpConfig);
+
+                /* This is ugly, but modifying the activityInfoConfigToNative
+                 * adapter would be messier */
+                if ((configChanges & ActivityInfo.CONFIG_THEME_RESOURCE) != 0) {
+                    configChanges = ActivityInfo.activityInfoConfigToNative(configChanges);
+                    configChanges |= ActivityInfo.CONFIG_THEME_RESOURCE;
+                } else {
+                    configChanges = ActivityInfo.activityInfoConfigToNative(configChanges);
+                }
+            }
             if (mConfiguration.locale == null) {
                 mConfiguration.locale = Locale.getDefault();
                 mConfiguration.setLayoutDirection(mConfiguration.locale);
@@ -1917,7 +1906,6 @@ public class Resources {
             if (mConfiguration.densityDpi != Configuration.DENSITY_DPI_UNDEFINED) {
                 mMetrics.densityDpi = mConfiguration.densityDpi;
                 mMetrics.density = mConfiguration.densityDpi * DisplayMetrics.DENSITY_DEFAULT_SCALE;
-                mMetrics.updateDensity();
             }
             mMetrics.scaledDensity = mMetrics.density * mConfiguration.fontScale;
 
@@ -1958,8 +1946,6 @@ public class Resources {
 
             clearDrawableCachesLocked(mDrawableCache, configChanges);
             clearDrawableCachesLocked(mColorDrawableCache, configChanges);
-            mAnimatorCache.onConfigurationChange(configChanges);
-            mStateListAnimatorCache.onConfigurationChange(configChanges);
 
             mColorStateListCache.clear();
 
@@ -1970,38 +1956,6 @@ public class Resources {
                 mPluralRule = NativePluralRules.forLocale(config.locale);
             }
         }
-    }
-
-    /**
-     * Called by ConfigurationBoundResourceCacheTest via reflection.
-     */
-    private int calcConfigChanges(Configuration config) {
-        int configChanges = 0xfffffff;
-        if (config != null) {
-            mTmpConfig.setTo(config);
-            int density = config.densityDpi;
-            if (density == Configuration.DENSITY_DPI_UNDEFINED) {
-                density = mMetrics.noncompatDensityDpi;
-            }
-
-            mCompatibilityInfo.applyToConfiguration(density, mTmpConfig);
-
-            if (mTmpConfig.locale == null) {
-                mTmpConfig.locale = Locale.getDefault();
-                mTmpConfig.setLayoutDirection(mTmpConfig.locale);
-            }
-            configChanges = mConfiguration.updateFrom(mTmpConfig);
-
-            /* This is ugly, but modifying the activityInfoConfigToNative
-             * adapter would be messier */
-            if ((configChanges & ActivityInfo.CONFIG_THEME_RESOURCE) != 0) {
-                configChanges = ActivityInfo.activityInfoConfigToNative(configChanges);
-                configChanges |= ActivityInfo.CONFIG_THEME_RESOURCE;
-            } else {
-                configChanges = ActivityInfo.activityInfoConfigToNative(configChanges);
-            }
-        }
-        return configChanges;
     }
 
     private void clearDrawableCachesLocked(
@@ -2399,7 +2353,7 @@ public class Resources {
             }
             sPreloaded = true;
             mPreloading = true;
-            sPreloadedDensity = DisplayMetrics.getDeviceDensity();
+            sPreloadedDensity = DisplayMetrics.DENSITY_DEVICE;
             mConfiguration.densityDpi = sPreloadedDensity;
             updateConfiguration(null, null);
         }
@@ -2511,14 +2465,7 @@ public class Resources {
 
         final Drawable dr;
         if (cs != null) {
-            final Drawable clonedDr = cs.newDrawable(this);
-            if (theme != null) {
-                dr = clonedDr.mutate();
-                dr.applyTheme(theme);
-                dr.clearMutated();
-            } else {
-                dr = clonedDr;
-            }
+            dr = cs.newDrawable(this, theme);
         } else if (isColorDrawable) {
             dr = new ColorDrawable(value.data);
         } else {

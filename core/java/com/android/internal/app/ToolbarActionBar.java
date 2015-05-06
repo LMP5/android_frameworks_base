@@ -40,6 +40,7 @@ import com.android.internal.widget.ToolbarWidgetWrapper;
 import java.util.ArrayList;
 
 public class ToolbarActionBar extends ActionBar {
+    private Toolbar mToolbar;
     private DecorToolbar mDecorToolbar;
     private boolean mToolbarMenuPrepared;
     private Window.Callback mWindowCallback;
@@ -65,6 +66,7 @@ public class ToolbarActionBar extends ActionBar {
     };
 
     public ToolbarActionBar(Toolbar toolbar, CharSequence title, Window.Callback windowCallback) {
+        mToolbar = toolbar;
         mDecorToolbar = new ToolbarWidgetWrapper(toolbar, false);
         mWindowCallback = new ToolbarCallbackWrapper(windowCallback);
         mDecorToolbar.setWindowCallback(mWindowCallback);
@@ -89,8 +91,8 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public void setCustomView(int resId) {
-        final LayoutInflater inflater = LayoutInflater.from(mDecorToolbar.getContext());
-        setCustomView(inflater.inflate(resId, mDecorToolbar.getViewGroup(), false));
+        final LayoutInflater inflater = LayoutInflater.from(mToolbar.getContext());
+        setCustomView(inflater.inflate(resId, mToolbar, false));
     }
 
     @Override
@@ -130,17 +132,17 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public void setElevation(float elevation) {
-        mDecorToolbar.getViewGroup().setElevation(elevation);
+        mToolbar.setElevation(elevation);
     }
 
     @Override
     public float getElevation() {
-        return mDecorToolbar.getViewGroup().getElevation();
+        return mToolbar.getElevation();
     }
 
     @Override
     public Context getThemedContext() {
-        return mDecorToolbar.getContext();
+        return mToolbar.getContext();
     }
 
     @Override
@@ -150,12 +152,12 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public void setHomeAsUpIndicator(Drawable indicator) {
-        mDecorToolbar.setNavigationIcon(indicator);
+        mToolbar.setNavigationIcon(indicator);
     }
 
     @Override
     public void setHomeAsUpIndicator(int resId) {
-        mDecorToolbar.setNavigationIcon(resId);
+        mToolbar.setNavigationIcon(resId);
     }
 
     @Override
@@ -278,7 +280,7 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public void setBackgroundDrawable(@Nullable Drawable d) {
-        mDecorToolbar.setBackgroundDrawable(d);
+        mToolbar.setBackground(d);
     }
 
     @Override
@@ -288,12 +290,12 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public CharSequence getTitle() {
-        return mDecorToolbar.getTitle();
+        return mToolbar.getTitle();
     }
 
     @Override
     public CharSequence getSubtitle() {
-        return mDecorToolbar.getSubtitle();
+        return mToolbar.getSubtitle();
     }
 
     @Override
@@ -387,44 +389,44 @@ public class ToolbarActionBar extends ActionBar {
 
     @Override
     public int getHeight() {
-        return mDecorToolbar.getHeight();
+        return mToolbar.getHeight();
     }
 
     @Override
     public void show() {
         // TODO: Consider a better transition for this.
         // Right now use no automatic transition so that the app can supply one if desired.
-        mDecorToolbar.setVisibility(View.VISIBLE);
+        mToolbar.setVisibility(View.VISIBLE);
     }
 
     @Override
     public void hide() {
         // TODO: Consider a better transition for this.
         // Right now use no automatic transition so that the app can supply one if desired.
-        mDecorToolbar.setVisibility(View.GONE);
+        mToolbar.setVisibility(View.GONE);
     }
 
     @Override
     public boolean isShowing() {
-        return mDecorToolbar.getVisibility() == View.VISIBLE;
+        return mToolbar.getVisibility() == View.VISIBLE;
     }
 
     @Override
     public boolean openOptionsMenu() {
-        return mDecorToolbar.showOverflowMenu();
+        return mToolbar.showOverflowMenu();
     }
 
     @Override
     public boolean invalidateOptionsMenu() {
-        mDecorToolbar.getViewGroup().removeCallbacks(mMenuInvalidator);
-        mDecorToolbar.getViewGroup().postOnAnimation(mMenuInvalidator);
+        mToolbar.removeCallbacks(mMenuInvalidator);
+        mToolbar.postOnAnimation(mMenuInvalidator);
         return true;
     }
 
     @Override
     public boolean collapseActionView() {
-        if (mDecorToolbar.hasExpandedActionView()) {
-            mDecorToolbar.collapseActionView();
+        if (mToolbar.hasExpandedActionView()) {
+            mToolbar.collapseActionView();
             return true;
         }
         return false;
@@ -432,10 +434,10 @@ public class ToolbarActionBar extends ActionBar {
 
     void populateOptionsMenu() {
         if (!mMenuCallbackSet) {
-            mDecorToolbar.setMenuCallbacks(new ActionMenuPresenterCallback(), new MenuBuilderCallback());
+            mToolbar.setMenuCallbacks(new ActionMenuPresenterCallback(), new MenuBuilderCallback());
             mMenuCallbackSet = true;
         }
-        final Menu menu = mDecorToolbar.getMenu();
+        final Menu menu = mToolbar.getMenu();
         final MenuBuilder mb = menu instanceof MenuBuilder ? (MenuBuilder) menu : null;
         if (mb != null) {
             mb.stopDispatchingItemsChanged();
@@ -516,7 +518,7 @@ public class ToolbarActionBar extends ActionBar {
             }
 
             mClosingActionMenu = true;
-            mDecorToolbar.dismissPopupMenus();
+            mToolbar.dismissPopupMenus();
             if (mWindowCallback != null) {
                 mWindowCallback.onPanelClosed(Window.FEATURE_ACTION_BAR, menu);
             }
@@ -534,7 +536,7 @@ public class ToolbarActionBar extends ActionBar {
         @Override
         public void onMenuModeChange(MenuBuilder menu) {
             if (mWindowCallback != null) {
-                if (mDecorToolbar.isOverflowMenuShowing()) {
+                if (mToolbar.isOverflowMenuShowing()) {
                     mWindowCallback.onPanelClosed(Window.FEATURE_ACTION_BAR, menu);
                 } else if (mWindowCallback.onPreparePanel(Window.FEATURE_OPTIONS_PANEL,
                         null, menu)) {

@@ -17,11 +17,17 @@
 package com.android.server.am;
 
 import android.app.AlertDialog;
+import android.app.Service;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.res.Resources;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Slog;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.view.WindowManager;
 import android.widget.TextView;
 
@@ -33,9 +39,10 @@ import com.android.internal.R;
  * in the background rather than just freeze the screen and not know if the user-switch affordance
  * was being handled.
  */
-final class UserSwitchingDialog extends AlertDialog
-        implements ViewTreeObserver.OnWindowShownListener {
+final class UserSwitchingDialog extends AlertDialog {
     private static final String TAG = "ActivityManagerUserSwitchingDialog";
+
+    private static final int MSG_START_USER = 1;
 
     private final ActivityManagerService mService;
     private final int mUserId;
@@ -67,21 +74,19 @@ final class UserSwitchingDialog extends AlertDialog
 
     @Override
     public void show() {
-        // Slog.v(TAG, "show called");
         super.show();
-        final View decorView = getWindow().getDecorView();
-        if (decorView != null) {
-            decorView.getViewTreeObserver().addOnWindowShownListener(this);
-        }
+        // TODO: Instead of just an arbitrary delay, wait for a signal that the window was fully
+        // displayed by the window manager
+        mHandler.sendMessageDelayed(mHandler.obtainMessage(MSG_START_USER), 250);
     }
 
-    @Override
-    public void onWindowShown() {
-        // Slog.v(TAG, "onWindowShown called");
-        mService.startUserInForeground(mUserId, this);
-        final View decorView = getWindow().getDecorView();
-        if (decorView != null) {
-            decorView.getViewTreeObserver().removeOnWindowShownListener(this);
+    private final Handler mHandler = new Handler() {
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_START_USER:
+                    mService.startUserInForeground(mUserId, UserSwitchingDialog.this);
+                    break;
+            }
         }
-    }
+    };
 }

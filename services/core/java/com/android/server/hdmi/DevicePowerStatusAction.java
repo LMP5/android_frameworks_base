@@ -70,8 +70,7 @@ final class DevicePowerStatusAction extends HdmiCecFeatureAction {
 
     @Override
     boolean processCommand(HdmiCecMessage cmd) {
-        if (mState != STATE_WAITING_FOR_REPORT_POWER_STATUS
-               || mTargetAddress != cmd.getSource()) {
+        if (mState != STATE_WAITING_FOR_REPORT_POWER_STATUS) {
             return false;
         }
         if (cmd.getOpcode() == Constants.MESSAGE_REPORT_POWER_STATUS) {

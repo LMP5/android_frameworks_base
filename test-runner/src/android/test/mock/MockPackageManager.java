@@ -754,13 +754,6 @@ public class MockPackageManager extends PackageManager {
      * @hide
      */
     @Override
-    public boolean isUpgrade() {
-        throw new UnsupportedOperationException();
-    }
-    /**
-     * @hide
-     */
-    @Override
     public void setComponentProtectedSetting(ComponentName componentName, boolean newState) {
         throw new UnsupportedOperationException();
     }
@@ -833,14 +826,6 @@ public class MockPackageManager extends PackageManager {
     /**
      * @hide
      */
-    public Drawable loadUnbadgedItemIcon(PackageItemInfo itemInfo, ApplicationInfo appInfo) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * @hide
-     */
-    @Override
     public void updateIconMaps(String pkgName) {
         throw new UnsupportedOperationException();
     }

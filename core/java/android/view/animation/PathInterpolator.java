@@ -42,7 +42,7 @@ import com.android.internal.R;
  *     path.lineTo(1f, 1f);
  * </pre></blockquote></p>
  */
-public class PathInterpolator extends BaseInterpolator {
+public class PathInterpolator implements Interpolator {
 
     // This governs how accurate the approximation of the Path is.
     private static final float PRECISION = 0.002f;
@@ -98,7 +98,7 @@ public class PathInterpolator extends BaseInterpolator {
             a = res.obtainAttributes(attrs, R.styleable.PathInterpolator);
         }
         parseInterpolatorFromTypeArray(a);
-        setChangingConfiguration(a.getChangingConfigurations());
+
         a.recycle();
     }
 

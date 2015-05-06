@@ -146,8 +146,8 @@ public class KeyguardIndicationController {
         try {
             long chargingTimeRemaining = mBatteryInfo.computeChargeTimeRemaining();
             if (chargingTimeRemaining > 0) {
-                String chargingTimeFormatted = Formatter.formatShortElapsedTimeRoundingUpToMinutes(
-                        mContext, chargingTimeRemaining);
+                String chargingTimeFormatted =
+                        Formatter.formatShortElapsedTime(mContext, chargingTimeRemaining);
                 return mContext.getResources().getString(
                         R.string.keyguard_indication_charging_time, chargingTimeFormatted);
             }
@@ -162,9 +162,8 @@ public class KeyguardIndicationController {
     KeyguardUpdateMonitorCallback mUpdateMonitor = new KeyguardUpdateMonitorCallback() {
         @Override
         public void onRefreshBatteryInfo(KeyguardUpdateMonitor.BatteryStatus status) {
-            boolean isChargingOrFull = status.status == BatteryManager.BATTERY_STATUS_CHARGING
+            mPowerPluggedIn = status.status == BatteryManager.BATTERY_STATUS_CHARGING
                     || status.status == BatteryManager.BATTERY_STATUS_FULL;
-            mPowerPluggedIn = status.isPluggedIn() && isChargingOrFull;
             mPowerCharged = status.isCharged();
             updateIndication();
         }

@@ -17,8 +17,7 @@
         android:height="64dp"
         android:width="64dp"
         android:viewportHeight="64"
-        android:viewportWidth="64"
-        android:name="root_bar" >
+        android:viewportWidth="64" >
 
     <group
         android:name="root"

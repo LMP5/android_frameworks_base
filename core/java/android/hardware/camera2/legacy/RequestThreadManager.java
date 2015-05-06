@@ -41,10 +41,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.android.internal.util.Preconditions.*;
 
@@ -69,7 +67,7 @@ public class RequestThreadManager {
     // For slightly more spammy messages that will get repeated every frame
     private static final boolean VERBOSE =
             Log.isLoggable(LegacyCameraDevice.DEBUG_PROP, Log.VERBOSE);
-    private Camera mCamera;
+    private final Camera mCamera;
     private final CameraCharacteristics mCharacteristics;
 
     private final CameraDeviceState mDeviceState;
@@ -84,8 +82,8 @@ public class RequestThreadManager {
     private static final int MAX_IN_FLIGHT_REQUESTS = 2;
 
     private static final int PREVIEW_FRAME_TIMEOUT = 1000; // ms
-    private static final int JPEG_FRAME_TIMEOUT = 4000; // ms (same as CTS for API2)
-    private static final int REQUEST_COMPLETE_TIMEOUT = JPEG_FRAME_TIMEOUT; // ms (same as JPEG timeout)
+    private static final int JPEG_FRAME_TIMEOUT = 3000; // ms (same as CTS for API2)
+    private static final int REQUEST_COMPLETE_TIMEOUT = 3000; // ms (same as JPEG timeout)
 
     private static final float ASPECT_RATIO_TOLERANCE = 0.01f;
     private boolean mPreviewRunning = false;
@@ -109,8 +107,6 @@ public class RequestThreadManager {
     private final FpsCounter mPrevCounter = new FpsCounter("Incoming Preview");
     private final FpsCounter mRequestCounter = new FpsCounter("Incoming Requests");
 
-    private final AtomicBoolean mQuit = new AtomicBoolean(false);
-
     // Stuff JPEGs into HAL_PIXEL_FORMAT_RGBA_8888 gralloc buffers to get around SW write
     // limitations for (b/17379185).
     private static final boolean USE_BLOB_FORMAT_OVERRIDE = true;
@@ -120,10 +116,9 @@ public class RequestThreadManager {
      */
     private static class ConfigureHolder {
         public final ConditionVariable condition;
-        public final Collection<Pair<Surface, Size>> surfaces;
+        public final Collection<Surface> surfaces;
 
-        public ConfigureHolder(ConditionVariable condition, Collection<Pair<Surface,
-                Size>> surfaces) {
+        public ConfigureHolder(ConditionVariable condition, Collection<Surface> surfaces) {
             this.condition = condition;
             this.surfaces = surfaces;
         }
@@ -322,21 +317,13 @@ public class RequestThreadManager {
         startPreview();
     }
 
-    private void configureOutputs(Collection<Pair<Surface, Size>> outputs) {
+    private void configureOutputs(Collection<Surface> outputs) {
         if (DEBUG) {
             String outputsStr = outputs == null ? "null" : (outputs.size() + " surfaces");
             Log.d(TAG, "configureOutputs with " + outputsStr);
         }
 
-        try {
-            stopPreview();
-        }  catch (RuntimeException e) {
-            Log.e(TAG, "Received device exception in configure call: ", e);
-            mDeviceState.setError(
-                    CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
-            return;
-        }
-
+        stopPreview();
         /*
          * Try to release the previous preview's surface texture earlier if we end up
          * using a different one; this also reduces the likelihood of getting into a deadlock
@@ -346,11 +333,6 @@ public class RequestThreadManager {
             mCamera.setPreviewTexture(/*surfaceTexture*/null);
         } catch (IOException e) {
             Log.w(TAG, "Failed to clear prior SurfaceTexture, may cause GL deadlock: ", e);
-        } catch (RuntimeException e) {
-            Log.e(TAG, "Received device exception in configure call: ", e);
-            mDeviceState.setError(
-                    CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
-            return;
         }
 
         if (mGLThreadManager != null) {
@@ -364,15 +346,10 @@ public class RequestThreadManager {
         mJpegSurfaceIds.clear();
         mPreviewTexture = null;
 
-        List<Size> previewOutputSizes = new ArrayList<>();
-        List<Size> callbackOutputSizes = new ArrayList<>();
-
         int facing = mCharacteristics.get(CameraCharacteristics.LENS_FACING);
         int orientation = mCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         if (outputs != null) {
-            for (Pair<Surface, Size> outPair : outputs) {
-                Surface s = outPair.first;
-                Size outSize = outPair.second;
+            for (Surface s : outputs) {
                 try {
                     int format = LegacyCameraDevice.detectSurfaceType(s);
                     LegacyCameraDevice.setSurfaceOrientation(s, facing, orientation);
@@ -385,11 +362,9 @@ public class RequestThreadManager {
                             }
                             mJpegSurfaceIds.add(LegacyCameraDevice.getSurfaceId(s));
                             mCallbackOutputs.add(s);
-                            callbackOutputSizes.add(outSize);
                             break;
                         default:
                             mPreviewOutputs.add(s);
-                            previewOutputSizes.add(outSize);
                             break;
                     }
                 } catch (LegacyExceptionUtils.BufferQueueAbandonedException e) {
@@ -416,9 +391,18 @@ public class RequestThreadManager {
         mParams.setPreviewFpsRange(bestRange[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
                 bestRange[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);
 
-        if (previewOutputSizes.size() > 0) {
+        if (mPreviewOutputs.size() > 0) {
+            List<Size> outputSizes = new ArrayList<>(outputs.size());
+            for (Surface s : mPreviewOutputs) {
+                try {
+                    Size size = LegacyCameraDevice.getSurfaceSize(s);
+                    outputSizes.add(size);
+                } catch (LegacyExceptionUtils.BufferQueueAbandonedException e) {
+                    Log.w(TAG, "Surface abandoned, skipping...", e);
+                }
+            }
 
-            Size largestOutput = SizeAreaComparator.findLargestByArea(previewOutputSizes);
+            Size largestOutput = SizeAreaComparator.findLargestByArea(outputSizes);
 
             // Find largest jpeg dimension - assume to have the same aspect ratio as sensor.
             Size largestJpegDimen = ParameterUtils.getLargestSupportedJpegSizeByArea(mParams);
@@ -455,8 +439,7 @@ public class RequestThreadManager {
             }
         }
 
-        Size smallestSupportedJpegSize = calculatePictureSize(mCallbackOutputs,
-                callbackOutputSizes, mParams);
+        Size smallestSupportedJpegSize = calculatePictureSize(mCallbackOutputs, mParams);
         if (smallestSupportedJpegSize != null) {
             /*
              * Set takePicture size to the smallest supported JPEG size large enough
@@ -474,26 +457,14 @@ public class RequestThreadManager {
             mGLThreadManager.start();
         }
         mGLThreadManager.waitUntilStarted();
-        List<Pair<Surface, Size>> previews = new ArrayList<>();
-        Iterator<Size> previewSizeIter = previewOutputSizes.iterator();
-        for (Surface p : mPreviewOutputs) {
-            previews.add(new Pair<>(p, previewSizeIter.next()));
-        }
-        mGLThreadManager.setConfigurationAndWait(previews, mCaptureCollector);
+        mGLThreadManager.setConfigurationAndWait(mPreviewOutputs, mCaptureCollector);
         mGLThreadManager.allowNewFrames();
         mPreviewTexture = mGLThreadManager.getCurrentSurfaceTexture();
         if (mPreviewTexture != null) {
             mPreviewTexture.setOnFrameAvailableListener(mPreviewCallback);
         }
 
-        try {
-            mCamera.setParameters(mParams);
-        } catch (RuntimeException e) {
-                Log.e(TAG, "Received device exception while configuring: ", e);
-                mDeviceState.setError(
-                        CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
-
-        }
+        mCamera.setParameters(mParams);
     }
 
     private void resetJpegSurfaceFormats(Collection<Surface> surfaces) {
@@ -528,25 +499,26 @@ public class RequestThreadManager {
      *          {@code null} if the {@code callbackOutputs} did not have any {@code JPEG}
      *          surfaces.
      */
-    private Size calculatePictureSize( List<Surface> callbackOutputs,
-                                       List<Size> callbackSizes, Camera.Parameters params) {
+    private Size calculatePictureSize(
+            Collection<Surface> callbackOutputs, Camera.Parameters params) {
         /*
          * Find the largest JPEG size (if any), from the configured outputs:
          * - the api1 picture size should be set to the smallest legal size that's at least as large
          *   as the largest configured JPEG size
          */
-        if (callbackOutputs.size() != callbackSizes.size()) {
-            throw new IllegalStateException("Input collections must be same length");
-        }
-        List<Size> configuredJpegSizes = new ArrayList<>();
-        Iterator<Size> sizeIterator = callbackSizes.iterator();
+        List<Size> configuredJpegSizes = new ArrayList<Size>();
         for (Surface callbackSurface : callbackOutputs) {
-            Size jpegSize = sizeIterator.next();
+            try {
+
                 if (!LegacyCameraDevice.containsSurfaceId(callbackSurface, mJpegSurfaceIds)) {
                     continue; // Ignore non-JPEG callback formats
                 }
 
+                Size jpegSize = LegacyCameraDevice.getSurfaceSize(callbackSurface);
                 configuredJpegSizes.add(jpegSize);
+            } catch (LegacyExceptionUtils.BufferQueueAbandonedException e) {
+                Log.w(TAG, "Surface abandoned, skipping...", e);
+            }
         }
         if (!configuredJpegSizes.isEmpty()) {
             /*
@@ -816,17 +788,12 @@ public class RequestThreadManager {
                             }
 
                         } catch (IOException e) {
-                            Log.e(TAG, "Received device exception during capture call: ", e);
+                            Log.e(TAG, "Received device exception: ", e);
                             mDeviceState.setError(
                                     CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
                             break;
                         } catch (InterruptedException e) {
                             Log.e(TAG, "Interrupted during capture: ", e);
-                            mDeviceState.setError(
-                                    CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
-                            break;
-                        } catch (RuntimeException e) {
-                            Log.e(TAG, "Received device exception during capture call: ", e);
                             mDeviceState.setError(
                                     CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
                             break;
@@ -904,16 +871,11 @@ public class RequestThreadManager {
                         mDeviceState.setError(
                                 CameraDeviceImpl.CameraDeviceCallbacks.ERROR_CAMERA_DEVICE);
                     }
-                    if (mPreviewTexture != null) {
-                        mPreviewTexture.setOnFrameAvailableListener(null);
-                    }
                     if (mGLThreadManager != null) {
                         mGLThreadManager.quit();
-                        mGLThreadManager = null;
                     }
                     if (mCamera != null) {
                         mCamera.release();
-                        mCamera = null;
                     }
                     resetJpegSurfaceFormats(mCallbackOutputs);
                     break;
@@ -975,16 +937,14 @@ public class RequestThreadManager {
      * Quit the request thread, and clean up everything.
      */
     public void quit() {
-        if (!mQuit.getAndSet(true)) {  // Avoid sending messages on dead thread's handler.
-            Handler handler = mRequestThread.waitAndGetHandler();
-            handler.sendMessageAtFrontOfQueue(handler.obtainMessage(MSG_CLEANUP));
-            mRequestThread.quitSafely();
-            try {
-                mRequestThread.join();
-            } catch (InterruptedException e) {
-                Log.e(TAG, String.format("Thread %s (%d) interrupted while quitting.",
-                        mRequestThread.getName(), mRequestThread.getId()));
-            }
+        Handler handler = mRequestThread.waitAndGetHandler();
+        handler.sendMessageAtFrontOfQueue(handler.obtainMessage(MSG_CLEANUP));
+        mRequestThread.quitSafely();
+        try {
+            mRequestThread.join();
+        } catch (InterruptedException e) {
+            Log.e(TAG, String.format("Thread %s (%d) interrupted while quitting.",
+                    mRequestThread.getName(), mRequestThread.getId()));
         }
     }
 
@@ -1034,7 +994,7 @@ public class RequestThreadManager {
      *
      * @param outputs a {@link java.util.Collection} of outputs to configure.
      */
-    public void configure(Collection<Pair<Surface, Size>> outputs) {
+    public void configure(Collection<Surface> outputs) {
         Handler handler = mRequestThread.waitAndGetHandler();
         final ConditionVariable condition = new ConditionVariable(/*closed*/false);
         ConfigureHolder holder = new ConfigureHolder(condition, outputs);

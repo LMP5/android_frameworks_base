@@ -209,25 +209,16 @@ public class StackScrollAlgorithm {
             // apply clipping and shadow
             float newNotificationEnd = newYTranslation + newHeight;
 
-            float clipHeight;
-            if (previousNotificationIsSwiped) {
-                // When the previous notification is swiped, we don't clip the content to the
-                // bottom of it.
-                clipHeight = newHeight;
-            } else {
-                clipHeight = newNotificationEnd - previousNotificationEnd;
-                clipHeight = Math.max(0.0f, clipHeight);
-                if (clipHeight != 0.0f) {
+            // In the unlocked shade we have to clip a little bit higher because of the rounded
+            // corners of the notifications.
+            float clippingCorrection = state.dimmed ? (mPerformClipping ? 0 : newHeight)
+                    : mRoundedRectCornerRadius * state.scale;
 
-                    // In the unlocked shade we have to clip a little bit higher because of the rounded
-                    // corners of the notifications, but only if we are not fully overlapped by
-                    // the top card.
-                    float clippingCorrection = state.dimmed
-                            ? (mPerformClipping ? 0 : newHeight)
-                            : mRoundedRectCornerRadius * state.scale;
-                    clipHeight += clippingCorrection;
-                }
-            }
+            // When the previous notification is swiped, we don't clip the content to the
+            // bottom of it.
+            float clipHeight = previousNotificationIsSwiped
+                    ? newHeight
+                    : newNotificationEnd - (previousNotificationEnd - clippingCorrection);
 
             updateChildClippingAndBackground(state, newHeight, clipHeight,
                     newHeight - (previousNotificationStart - newYTranslation));
@@ -688,11 +679,7 @@ public class StackScrollAlgorithm {
             StackScrollState.ViewState childViewState = resultState.getViewStateForView(child);
             if (i < algorithmState.itemsInTopStack) {
                 float stackIndex = algorithmState.itemsInTopStack - i;
-
-                // Ensure that the topmost item is a little bit higher than the rest when fully
-                // scrolled, to avoid drawing errors when swiping it out
-                float max = MAX_ITEMS_IN_TOP_STACK + (i == 0 ? 2.5f : 2);
-                stackIndex = Math.min(stackIndex, max);
+                stackIndex = Math.min(stackIndex, MAX_ITEMS_IN_TOP_STACK + 2);
                 if (i == 0 && algorithmState.itemsInTopStack < 2.0f) {
 
                     // We only have the top item and an additional item in the top stack,

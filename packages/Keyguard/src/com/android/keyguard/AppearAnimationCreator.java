@@ -25,6 +25,5 @@ import android.view.animation.Interpolator;
  */
 public interface AppearAnimationCreator<T> {
      void createAnimation(T animatedObject, long delay, long duration,
-             float translationY, boolean appearing, Interpolator interpolator,
-             Runnable finishListener);
+            float startTranslationY, Interpolator interpolator, Runnable finishListener);
 }

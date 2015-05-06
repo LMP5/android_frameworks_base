@@ -29,6 +29,4 @@ interface ITrustManager {
     void reportRequireCredentialEntry(int userId);
     void registerTrustListener(in ITrustListener trustListener);
     void unregisterTrustListener(in ITrustListener trustListener);
-    void reportKeyguardShowingChanged();
-    boolean isDeviceLocked(int userId);
 }

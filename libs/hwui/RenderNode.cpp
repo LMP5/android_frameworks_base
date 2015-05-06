@@ -25,6 +25,7 @@
 #include <SkCanvas.h>
 #include <algorithm>
 
+#include <utils/Trace.h>
 
 #include "DamageAccumulator.h"
 #include "Debug.h"
@@ -33,7 +34,6 @@
 #include "LayerRenderer.h"
 #include "OpenGLRenderer.h"
 #include "utils/MathUtils.h"
-#include "utils/TraceUtils.h"
 #include "renderthread/CanvasContext.h"
 
 namespace android {
@@ -50,13 +50,10 @@ void RenderNode::outputLogBuffer(int fd) {
     fprintf(file, "\nRecent DisplayList operations\n");
     logBuffer.outputCommands(file);
 
-    if (Caches::hasInstance()) {
-        String8 cachesLog;
-        Caches::getInstance().dumpMemoryUsage(cachesLog);
-        fprintf(file, "\nCaches:\n%s\n", cachesLog.string());
-    } else {
-        fprintf(file, "\nNo caches instance.\n");
-    }
+    String8 cachesLog;
+    Caches::getInstance().dumpMemoryUsage(cachesLog);
+    fprintf(file, "\nCaches:\n%s", cachesLog.string());
+    fprintf(file, "\n");
 
     fflush(file);
 }
@@ -87,17 +84,16 @@ RenderNode::RenderNode()
 RenderNode::~RenderNode() {
     deleteDisplayListData();
     delete mStagingDisplayListData;
-    if (mLayer) {
-        ALOGW("Memory Warning: Layer %p missed its detachment, held on to for far too long!", mLayer);
-        mLayer->postDecStrong();
-        mLayer = 0;
-    }
+    LayerRenderer::destroyLayerDeferred(mLayer);
 }
 
 void RenderNode::setStagingDisplayList(DisplayListData* data) {
     mNeedsDisplayListDataSync = true;
     delete mStagingDisplayListData;
     mStagingDisplayListData = data;
+    if (mStagingDisplayListData) {
+        Caches::getInstance().registerFunctors(mStagingDisplayListData->functors.size());
+    }
 }
 
 /**
@@ -105,11 +101,8 @@ void RenderNode::setStagingDisplayList(DisplayListData* data) {
  * display list. This function should remain in sync with the replay() function.
  */
 void RenderNode::output(uint32_t level) {
-    ALOGD("%*sStart display list (%p, %s%s%s%s)", (level - 1) * 2, "", this,
-            getName(),
-            (properties().hasShadow() ? ", casting shadow" : ""),
-            (isRenderable() ? "" : ", empty"),
-            (mLayer != NULL ? ", on HW Layer" : ""));
+    ALOGD("%*sStart display list (%p, %s, render=%d)", (level - 1) * 2, "", this,
+            getName(), isRenderable());
     ALOGD("%*s%s %d", level * 2, "", "Save",
             SkCanvas::kMatrix_SaveFlag | SkCanvas::kClip_SaveFlag);
 
@@ -205,7 +198,6 @@ void RenderNode::pushLayerUpdate(TreeInfo& info) {
     info.damageAccumulator->peekAtDirty(&dirty);
 
     if (!mLayer) {
-        Caches::getInstance().dumpMemoryUsage();
         if (info.errorHandler) {
             std::string msg = "Unable to create layer for ";
             msg += getName();
@@ -301,14 +293,7 @@ void RenderNode::pushStagingDisplayListChanges(TreeInfo& info) {
                 mStagingDisplayListData->children()[i]->mRenderNode->incParentRefCount();
             }
         }
-        // Damage with the old display list first then the new one to catch any
-        // changes in isRenderable or, in the future, bounds
-        damageSelf(info);
         deleteDisplayListData();
-        // TODO: Remove this caches stuff
-        if (mStagingDisplayListData && mStagingDisplayListData->functors.size()) {
-            Caches::getInstance().registerFunctors(mStagingDisplayListData->functors.size());
-        }
         mDisplayListData = mStagingDisplayListData;
         mStagingDisplayListData = NULL;
         if (mDisplayListData) {
@@ -324,9 +309,6 @@ void RenderNode::deleteDisplayListData() {
     if (mDisplayListData) {
         for (size_t i = 0; i < mDisplayListData->children().size(); i++) {
             mDisplayListData->children()[i]->mRenderNode->decParentRefCount();
-        }
-        if (mDisplayListData->functors.size()) {
-            Caches::getInstance().unregisterFunctors(mDisplayListData->functors.size());
         }
     }
     delete mDisplayListData;
@@ -428,10 +410,6 @@ void RenderNode::setViewProperties(OpenGLRenderer& renderer, T& handler) {
                 properties().getClippingRectForFlags(clipFlags, &layerBounds);
                 clipFlags = 0; // all clipping done by saveLayer
             }
-
-            ATRACE_FORMAT("%s alpha caused %ssaveLayer %dx%d",
-                    getName(), clipFlags ? "" : "unclipped ",
-                    (int)layerBounds.getWidth(), (int)layerBounds.getHeight());
 
             SaveLayerOp* op = new (handler.allocator()) SaveLayerOp(
                     layerBounds.left, layerBounds.top, layerBounds.right, layerBounds.bottom,
@@ -680,32 +658,13 @@ void RenderNode::issueDrawShadowOperation(const Matrix4& transformFromParent, T&
 
     float casterAlpha = properties().getAlpha() * properties().getOutline().getAlpha();
 
-
-    // holds temporary SkPath to store the result of intersections
-    SkPath* frameAllocatedPath = NULL;
     const SkPath* outlinePath = casterOutlinePath;
-
-    // intersect the outline with the reveal clip, if present
     if (revealClipPath) {
-        frameAllocatedPath = handler.allocPathForFrame();
+        // if we can't simply use the caster's path directly, create a temporary one
+        SkPath* frameAllocatedPath = handler.allocPathForFrame();
 
-        Op(*outlinePath, *revealClipPath, kIntersect_PathOp, frameAllocatedPath);
-        outlinePath = frameAllocatedPath;
-    }
-
-    // intersect the outline with the clipBounds, if present
-    if (properties().getClippingFlags() & CLIP_TO_CLIP_BOUNDS) {
-        if (!frameAllocatedPath) {
-            frameAllocatedPath = handler.allocPathForFrame();
-        }
-
-        Rect clipBounds;
-        properties().getClippingRectForFlags(CLIP_TO_CLIP_BOUNDS, &clipBounds);
-        SkPath clipBoundsPath;
-        clipBoundsPath.addRect(clipBounds.left, clipBounds.top,
-                clipBounds.right, clipBounds.bottom);
-
-        Op(*outlinePath, clipBoundsPath, kIntersect_PathOp, frameAllocatedPath);
+        // intersect the outline with the convex reveal clip
+        Op(*casterOutlinePath, *revealClipPath, kIntersect_PathOp, frameAllocatedPath);
         outlinePath = frameAllocatedPath;
     }
 

@@ -27,16 +27,9 @@ public class AnimatedStateVectorDrawableTest extends Activity {
     private static final String LOGCAT = "AnimatedStateVectorDrawableTest";
 
     protected int[] icon = {
-            // These shows pairs of ASLD , the left side set the reversible to true.
-            // the right side set to false.
             R.drawable.state_animation_vector_drawable01,
-            R.drawable.state_animation_vector_drawable01_false,
             R.drawable.state_animation_vector_drawable02,
-            R.drawable.state_animation_vector_drawable02_false,
             R.drawable.state_animation_vector_drawable03,
-            R.drawable.state_animation_vector_drawable03_false,
-            R.drawable.state_animation_drawable04,
-            R.drawable.state_animation_drawable04_false,
     };
 
     @Override
@@ -46,7 +39,7 @@ public class AnimatedStateVectorDrawableTest extends Activity {
         ScrollView scrollView = new ScrollView(this);
         GridLayout container = new GridLayout(this);
         scrollView.addView(container);
-        container.setColumnCount(2);
+        container.setColumnCount(5);
 
         for (int i = 0; i < icon.length; i++) {
             CheckBox button = new CheckBox(this);

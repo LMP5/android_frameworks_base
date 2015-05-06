@@ -30,7 +30,6 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserManager;
 import android.provider.Settings;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import java.util.Locale;
@@ -39,14 +38,11 @@ public class SettingsHelper {
     private static final String SILENT_RINGTONE = "_silent";
     private Context mContext;
     private AudioManager mAudioManager;
-    private TelephonyManager mTelephonyManager;
 
     public SettingsHelper(Context context) {
         mContext = context;
         mAudioManager = (AudioManager) context
                 .getSystemService(Context.AUDIO_SERVICE);
-        mTelephonyManager = (TelephonyManager) context
-                .getSystemService(Context.TELEPHONY_SERVICE);
     }
 
     /**
@@ -79,23 +75,12 @@ public class SettingsHelper {
     }
 
     public String onBackupValue(String name, String value) {
-        // Special processing for backing up ringtones & notification sounds
+        // Special processing for backing up ringtones
         if (Settings.System.RINGTONE.equals(name)
                 || Settings.System.NOTIFICATION_SOUND.equals(name)) {
             if (value == null) {
-                if (Settings.System.RINGTONE.equals(name)) {
-                    // For ringtones, we need to distinguish between non-telephony vs telephony
-                    if (mTelephonyManager != null && mTelephonyManager.isVoiceCapable()) {
-                        // Backup a null ringtone as silent on voice-capable devices
-                        return SILENT_RINGTONE;
-                    } else {
-                        // Skip backup of ringtone on non-telephony devices.
-                        return null;
-                    }
-                } else {
-                    // Backup a null notification sound as silent
-                    return SILENT_RINGTONE;
-                }
+                // Silent ringtone
+                return SILENT_RINGTONE;
             } else {
                 return getCanonicalRingtoneValue(value);
             }

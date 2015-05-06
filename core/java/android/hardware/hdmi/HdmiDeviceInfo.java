@@ -77,18 +77,9 @@ public class HdmiDeviceInfo implements Parcelable {
     /** Invalid port ID */
     public static final int PORT_INVALID = -1;
 
-    /** Invalid device ID */
-    public static final int ID_INVALID = 0xFFFF;
-
-    /** Device info used to indicate an inactivated device. */
-    public static final HdmiDeviceInfo INACTIVE_DEVICE = new HdmiDeviceInfo();
-
     private static final int HDMI_DEVICE_TYPE_CEC = 0;
     private static final int HDMI_DEVICE_TYPE_MHL = 1;
     private static final int HDMI_DEVICE_TYPE_HARDWARE = 2;
-
-    // Type used to indicate the device that has relinquished its active source status.
-    private static final int HDMI_DEVICE_TYPE_INACTIVE = 100;
 
     // Offset used for id value. MHL devices, for instance, will be assigned the value from
     // ID_OFFSET_MHL.
@@ -139,8 +130,6 @@ public class HdmiDeviceInfo implements Parcelable {
                             return new HdmiDeviceInfo(physicalAddress, portId, adopterId, deviceId);
                         case HDMI_DEVICE_TYPE_HARDWARE:
                             return new HdmiDeviceInfo(physicalAddress, portId);
-                        case HDMI_DEVICE_TYPE_INACTIVE:
-                            return HdmiDeviceInfo.INACTIVE_DEVICE;
                         default:
                             return null;
                     }
@@ -219,6 +208,7 @@ public class HdmiDeviceInfo implements Parcelable {
 
         mDeviceId = -1;
         mAdopterId = -1;
+
     }
 
     /**
@@ -247,36 +237,14 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Constructor. Used to initialize the instance representing an inactivated device.
-     * Can be passed input change listener to indicate the active source yielded
-     * its status, hence the listener should take an appropriate action such as
-     * switching to other input.
-     */
-    public HdmiDeviceInfo() {
-        mHdmiDeviceType = HDMI_DEVICE_TYPE_INACTIVE;
-        mPhysicalAddress = PATH_INVALID;
-        mId = ID_INVALID;
-
-        mLogicalAddress = -1;
-        mDeviceType = DEVICE_INACTIVE;
-        mPortId = PORT_INVALID;
-        mDevicePowerStatus = HdmiControlManager.POWER_STATUS_UNKNOWN;
-        mDisplayName = "Inactive";
-        mVendorId = 0;
-
-        mDeviceId = -1;
-        mAdopterId = -1;
-    }
-
-    /**
-     * Returns the id of the device.
+     * Return the id of the device.
      */
     public int getId() {
         return mId;
     }
 
     /**
-     * Returns the id to be used for CEC device.
+     * Return the id to be used for CEC device.
      *
      * @param address logical address of CEC device
      * @return id for CEC device
@@ -287,7 +255,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns the id to be used for MHL device.
+     * Return the id to be used for MHL device.
      *
      * @param portId port which the MHL device is connected to
      * @return id for MHL device
@@ -298,7 +266,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns the id to be used for hardware port.
+     * Return the id to be used for hardware port.
      *
      * @param portId port id
      * @return id for hardware port
@@ -308,28 +276,28 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns the CEC logical address of the device.
+     * Return the CEC logical address of the device.
      */
     public int getLogicalAddress() {
         return mLogicalAddress;
     }
 
     /**
-     * Returns the physical address of the device.
+     * Return the physical address of the device.
      */
     public int getPhysicalAddress() {
         return mPhysicalAddress;
     }
 
     /**
-     * Returns the port ID.
+     * Return the port ID.
      */
     public int getPortId() {
         return mPortId;
     }
 
     /**
-     * Returns CEC type of the device. For more details, refer constants between {@link #DEVICE_TV}
+     * Return CEC type of the device. For more details, refer constants between {@link #DEVICE_TV}
      * and {@link #DEVICE_INACTIVE}.
      */
     public int getDeviceType() {
@@ -337,7 +305,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns device's power status. It should be one of the following values.
+     * Return device's power status. It should be one of the following values.
      * <ul>
      * <li>{@link HdmiControlManager#POWER_STATUS_ON}
      * <li>{@link HdmiControlManager#POWER_STATUS_STANDBY}
@@ -351,36 +319,30 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns MHL device id. Return -1 for non-MHL device.
+     * Return MHL device id. Return -1 for non-MHL device.
      */
     public int getDeviceId() {
         return mDeviceId;
     }
 
     /**
-     * Returns MHL adopter id. Return -1 for non-MHL device.
+     * Return MHL adopter id. Return -1 for non-MHL device.
      */
     public int getAdopterId() {
         return mAdopterId;
     }
 
     /**
-     * Returns {@code true} if the device is of a type that can be an input source.
+     * Return {@code true} if the device is of a type that can be an input source.
      */
     public boolean isSourceType() {
-        if (isCecDevice()) {
-            return mDeviceType == DEVICE_PLAYBACK
-                    || mDeviceType == DEVICE_RECORDER
-                    || mDeviceType == DEVICE_TUNER;
-        } else if (isMhlDevice()) {
-            return true;
-        } else {
-            return false;
-        }
+        return mDeviceType == DEVICE_PLAYBACK
+                || mDeviceType == DEVICE_RECORDER
+                || mDeviceType == DEVICE_TUNER;
     }
 
     /**
-     * Returns {@code true} if the device represents an HDMI-CEC device. {@code false} if the device
+     * Return {@code true} if the device represents an HDMI-CEC device. {@code false} if the device
      * is either MHL or other device.
      */
     public boolean isCecDevice() {
@@ -388,7 +350,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Returns {@code true} if the device represents an MHL device. {@code false} if the device is
+     * Return {@code true} if the device represents an MHL device. {@code false} if the device is
      * either CEC or other device.
      */
     public boolean isMhlDevice() {
@@ -396,22 +358,14 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Return {@code true} if the device represents an inactivated device that relinquishes
-     * its status as active source by &lt;Active Source&gt; (HDMI-CEC) or Content-off (MHL).
-     */
-    public boolean isInactivated() {
-        return mHdmiDeviceType == HDMI_DEVICE_TYPE_INACTIVE;
-    }
-
-    /**
-     * Returns display (OSD) name of the device.
+     * Return display (OSD) name of the device.
      */
     public String getDisplayName() {
         return mDisplayName;
     }
 
     /**
-     * Returns vendor id of the device. Vendor id is used to distinguish devices built by other
+     * Return vendor id of the device. Vendor id is used to distinguish devices built by other
      * manufactures. This is required for vendor-specific command on CEC standard.
      */
     public int getVendorId() {
@@ -419,7 +373,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Describes the kinds of special objects contained in this Parcelable's marshalled
+     * Describe the kinds of special objects contained in this Parcelable's marshalled
      * representation.
      */
     @Override
@@ -428,7 +382,7 @@ public class HdmiDeviceInfo implements Parcelable {
     }
 
     /**
-     * Serializes this object into a {@link Parcel}.
+     * Serialize this object into a {@link Parcel}.
      *
      * @param dest The Parcel in which the object should be written.
      * @param flags Additional flags about how the object should be written. May be 0 or
@@ -451,8 +405,6 @@ public class HdmiDeviceInfo implements Parcelable {
                 dest.writeInt(mDeviceId);
                 dest.writeInt(mAdopterId);
                 break;
-            case HDMI_DEVICE_TYPE_INACTIVE:
-                // flow through
             default:
                 // no-op
         }
@@ -479,9 +431,6 @@ public class HdmiDeviceInfo implements Parcelable {
 
             case HDMI_DEVICE_TYPE_HARDWARE:
                 s.append("Hardware: ");
-                break;
-            case HDMI_DEVICE_TYPE_INACTIVE:
-                s.append("Inactivated: ");
                 break;
             default:
                 return "";

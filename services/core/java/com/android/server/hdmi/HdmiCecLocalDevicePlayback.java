@@ -19,8 +19,6 @@ package com.android.server.hdmi;
 import android.hardware.hdmi.HdmiControlManager;
 import android.hardware.hdmi.HdmiDeviceInfo;
 import android.hardware.hdmi.IHdmiControlCallback;
-import android.os.PowerManager;
-import android.os.PowerManager.WakeLock;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.util.Slog;
@@ -36,14 +34,14 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
 
     private boolean mIsActiveSource = false;
 
-    // Used to keep the device awake while it is the active source. For devices that
-    // cannot wake up via CEC commands, this address the inconvenience of having to
-    // turn them on.
-    // Lazily initialized - should call getWakeLock() to get the instance.
-    private WakeLock mWakeLock;
-
     HdmiCecLocalDevicePlayback(HdmiControlService service) {
         super(service, HdmiDeviceInfo.DEVICE_PLAYBACK);
+    }
+
+    @Override
+    void init() {
+        super.init();
+        mIsActiveSource = false;
     }
 
     @Override
@@ -52,8 +50,6 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
         assertRunOnServiceThread();
         mService.sendCecCommand(HdmiCecMessageBuilder.buildReportPhysicalAddressCommand(
                 mAddress, mService.getPhysicalAddress(), mDeviceType));
-        mService.sendCecCommand(HdmiCecMessageBuilder.buildDeviceVendorIdCommand(
-                mAddress, mService.getVendorId()));
         startQueuedActions();
     }
 
@@ -131,37 +127,12 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
         if (connected && mService.isPowerStandbyOrTransient()) {
             mService.wakeUp();
         }
-        if (!connected) {
-            getWakeLock().release();
-        }
     }
 
     @ServiceThreadOnly
-    void setActiveSource(boolean on) {
+    void markActiveSource() {
         assertRunOnServiceThread();
-        mIsActiveSource = on;
-        if (on) {
-            getWakeLock().acquire();
-            HdmiLogger.debug("active source: %b. Wake lock acquired", mIsActiveSource);
-        } else {
-            getWakeLock().release();
-            HdmiLogger.debug("Wake lock released");
-        }
-    }
-
-    @ServiceThreadOnly
-    private WakeLock getWakeLock() {
-        assertRunOnServiceThread();
-        if (mWakeLock == null) {
-            mWakeLock = mService.getPowerManager().newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
-            mWakeLock.setReferenceCounted(false);
-        }
-        return mWakeLock;
-    }
-
-    @Override
-    protected boolean canGoToStandby() {
-        return !getWakeLock().isHeld();
+        mIsActiveSource = true;
     }
 
     @Override
@@ -175,15 +146,8 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
 
     private void mayResetActiveSource(int physicalAddress) {
         if (physicalAddress != mService.getPhysicalAddress()) {
-            setActiveSource(false);
+            mIsActiveSource = false;
         }
-    }
-
-    @ServiceThreadOnly
-    protected boolean handleUserControlPressed(HdmiCecMessage message) {
-        assertRunOnServiceThread();
-        wakeUpIfActiveSource();
-        return super.handleUserControlPressed(message);
     }
 
     @Override
@@ -192,14 +156,14 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
         assertRunOnServiceThread();
         int physicalAddress = HdmiUtils.twoBytesToInt(message.getParams());
         maySetActiveSource(physicalAddress);
-        maySendActiveSource(message.getSource());
+        maySendActiveSource();
         wakeUpIfActiveSource();
         return true;  // Broadcast message.
     }
 
-    // Samsung model we tested sends <Routing Change> and <Request Active Source>
-    // in a row, and then changes the input to the internal source if there is no
-    // <Active Source> in response. To handle this, we'll set ActiveSource aggressively.
+    // Samsung model, we tested, sends <RoutingChange> and <RequestActiveSource> consecutively,
+    // Then if there is no <ActiveSource> response, it will change the input to
+    // the internal source.  To handle this, we'll set ActiveSource aggressively.
     @Override
     @ServiceThreadOnly
     protected boolean handleRoutingChange(HdmiCecMessage message) {
@@ -219,27 +183,23 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
     }
 
     private void maySetActiveSource(int physicalAddress) {
-        setActiveSource(physicalAddress == mService.getPhysicalAddress());
+        if (physicalAddress == mService.getPhysicalAddress()) {
+            mIsActiveSource = true;
+        } else {
+            mIsActiveSource = false;
+        }
     }
 
     private void wakeUpIfActiveSource() {
-        if (!mIsActiveSource) {
-            return;
-        }
-        // Wake up the device if the power is in standby mode, or its screen is off -
-        // which can happen if the device is holding a partial lock.
-        if (mService.isPowerStandbyOrTransient() || !mService.getPowerManager().isScreenOn()) {
+        if (mIsActiveSource && mService.isPowerStandbyOrTransient()) {
             mService.wakeUp();
         }
     }
 
-    private void maySendActiveSource(int dest) {
+    private void maySendActiveSource() {
         if (mIsActiveSource) {
             mService.sendCecCommand(HdmiCecMessageBuilder.buildActiveSource(
                     mAddress, mService.getPhysicalAddress()));
-            // Always reports menu-status active to receive RCP.
-            mService.sendCecCommand(HdmiCecMessageBuilder.buildReportMenuStatus(
-                    mAddress, dest, Constants.MENU_STATE_ACTIVATED));
         }
     }
 
@@ -247,7 +207,7 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
     @ServiceThreadOnly
     protected boolean handleRequestActiveSource(HdmiCecMessage message) {
         assertRunOnServiceThread();
-        maySendActiveSource(message.getSource());
+        maySendActiveSource();
         return true;  // Broadcast message.
     }
 
@@ -261,7 +221,7 @@ final class HdmiCecLocalDevicePlayback extends HdmiCecLocalDevice {
             mService.sendCecCommand(HdmiCecMessageBuilder.buildInactiveSource(
                     mAddress, mService.getPhysicalAddress()));
         }
-        setActiveSource(false);
+        mIsActiveSource = false;
         checkIfPendingActionsCleared();
     }
 

@@ -1,9 +1,11 @@
 page.title=Supporting Different Languages
 parent.title=Supporting Different Devices
-page.tags=strings,localizing,localization,resources,formats,l10n
-helpoutsWidget=true
+page.tags=localizing,localization,resources,formats,l10n
+parent.link=index.html
 
 trainingnavtop=true
+next.title=Supporting Different Screens
+next.link=screens.html
 
 @jd:body
 
