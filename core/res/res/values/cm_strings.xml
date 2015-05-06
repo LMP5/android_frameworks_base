@@ -225,15 +225,6 @@
     <!-- Storage description for UICC storage. [CHAR LIMIT=NONE] -->
     <string name="storage_uicc">UICC storage</string>
 
-    <!-- Displayed when the USSD/SS request is modified by STK CC to a
-    different request. This will be displayed in a toast. -->
-    <string name="stk_cc_ussd_to_dial">USSD request is modified to DIAL request.</string>
-    <string name="stk_cc_ussd_to_ss">USSD request is modified to SS request.</string>
-    <string name="stk_cc_ussd_to_ussd">USSD request is modified to new USSD request.</string>
-    <string name="stk_cc_ss_to_dial">SS request is modified to DIAL request.</string>
-    <string name="stk_cc_ss_to_ussd">SS request is modified to USSD request.</string>
-    <string name="stk_cc_ss_to_ss">SS request is modified to new SS request.</string>
-
     <!-- Carrier Name -->
     <string name="China_Mobile">China Mobile</string>
     <string name="China_Unicom">China Unicom</string>
@@ -257,14 +248,6 @@
     <!-- Theme installation error notification -->
     <string name="theme_install_error_title">Failed to install theme</string>
     <string name="theme_install_error_message">%s failed to install</string>
-
-    <!-- [CHAR LIMIT=NONE] Message shown in dialog on first boot after clean install for each .apk that is optimized. -->
-    <string name="android_installing_apk">Installing app
-        <xliff:g id="number" example="123">%1$d</xliff:g> of
-        <xliff:g id="number" example="123">%2$d</xliff:g>.</string>
-
-    <!-- [CHAR LIMIT=40] Title of dialog that is shown when performing a system install. -->
-    <string name="android_installing_title">Android is installing\u2026</string>
 
     <string name="theme_reset_notification_title">Theme reset</string>
     <string name="theme_reset_notification_body">System theme restored due to multiple app crashes.</string>
@@ -350,8 +333,11 @@
     <string name="live_display_outdoor_summary">Use outdoor settings only</string>
     <string name="live_display_hint">LiveDisplay can help reduce eyestrain and help you sleep at night. Click here to try it out!</string>
 
-    <!-- Notify use that they are in Lock-to-app (for devices without navbar) -->
-    <string name="lock_to_app_toast_no_navbar">To unpin this screen, touch and hold Menu button.</string>
-    <!-- Lock-to-app dialog description (for devices without navbar) -->
-    <string name="lock_to_app_description_no_navbar">Screen pinning locks the display in a single view.\n\nTo unpin, touch and hold Menu button.</string>
+    <!-- Notify user that they are in Lock-to-app (for devices without navbar) -->
+    <string name="lock_to_app_toast_no_navbar">To unpin this screen, touch and hold the Back button.</string>
+
+    <!-- Notification which notifies user flashlight is enabled -->
+    <string name="quick_settings_tile_flashlight_not_title">Flashlight is on</string>
+    <string name="quick_settings_tile_flashlight_not_summary">Tap to turn off</string>
+
 </resources>

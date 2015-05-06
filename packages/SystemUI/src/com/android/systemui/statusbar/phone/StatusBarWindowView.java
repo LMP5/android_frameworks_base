@@ -200,11 +200,11 @@ public class StatusBarWindowView extends FrameLayout {
         if (mService.getBarState() == StatusBarState.KEYGUARD) {
             switch (ev.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    mService.mKeyguardBottomArea.requestVisualizer(false, 0);
+                    mService.requestVisualizer(false, 0);
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    mService.mKeyguardBottomArea.requestVisualizer(true, 500);
+                    mService.requestVisualizer(true, 500);
                     break;
             }
         }
@@ -218,11 +218,12 @@ public class StatusBarWindowView extends FrameLayout {
         if (mNotificationPanel.isFullyExpanded()
                 && mStackScrollLayout.getVisibility() == View.VISIBLE
                 && mService.getBarState() == StatusBarState.KEYGUARD
+                && !mService.isQsExpanded()
                 && !mService.isBouncerShowing()) {
             intercept = mDragDownHelper.onInterceptTouchEvent(ev);
             // wake up on a touch down event, if dozing
             if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                mService.wakeUpIfDozing(ev.getEventTime(), true);
+                mService.wakeUpIfDozing(ev.getEventTime(), ev);
             }
         }
         if (!intercept) {

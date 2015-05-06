@@ -18,28 +18,26 @@ package com.android.systemui.egg;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.TextView;
 
 import com.android.systemui.R;
 
 public class LLandActivity extends Activity {
+    LLand mLand;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         final boolean isCM = getIntent().getBooleanExtra("is_cm", false);
-        if (isCM) {
-            setContentView(R.layout.cmland);
-            CMLand world = (CMLand) findViewById(R.id.world);
-            world.setScoreField((TextView) findViewById(R.id.score));
-            world.setSplash(findViewById(R.id.welcome));
-            Log.v(CMLand.TAG, "focus: " + world.requestFocus());
-        } else {
-            setContentView(R.layout.lland);
-            LLand world = (LLand) findViewById(R.id.world);
-            world.setScoreField((TextView) findViewById(R.id.score));
-            world.setSplash(findViewById(R.id.welcome));
-            Log.v(LLand.TAG, "focus: " + world.requestFocus());
-        }
+        setContentView(isCM ? R.layout.cmland : R.layout.lland);
+        mLand = (LLand) findViewById(R.id.world);
+        mLand.setScoreField((TextView) findViewById(R.id.score));
+        mLand.setSplash(findViewById(R.id.welcome));
+    }
+
+    @Override
+    public void onPause() {
+        mLand.stop();
+        super.onPause();
     }
 }

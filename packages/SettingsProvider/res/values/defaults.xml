@@ -21,6 +21,7 @@
     <integer name="def_screen_off_timeout">60000</integer>
     <integer name="def_sleep_timeout">-1</integer>
     <bool name="def_airplane_mode_on">false</bool>
+    <bool name="def_theater_mode_on">false</bool>
     <!-- Comma-separated list of bluetooth, wifi, and cell. -->
     <string name="def_airplane_mode_radios" translatable="false">cell,bluetooth,wifi,nfc,wimax</string>
     <string name="airplane_mode_toggleable_radios" translatable="false">bluetooth,wifi,nfc</string>
@@ -51,6 +52,7 @@
     -->
     <string name="def_location_providers_allowed" translatable="false">gps</string>
     <bool name="assisted_gps_enabled">true</bool>
+    <string name="assisted_gps_configurable_list" translatable="false"></string>
     <bool name="def_netstats_enabled">true</bool>
     <bool name="def_usb_mass_storage_enabled">true</bool>
     <bool name="def_wifi_on">false</bool>
@@ -233,7 +235,7 @@
     <bool name="def_cm_stats_collection">false</bool>
 
     <!-- Default for Settings.System.STATUS_BAR_BATTERY_STYLE -->
-    <integer name="def_battery_style">0</integer>
+    <integer name="def_battery_style">2</integer>
 
     <!-- Default theme -->
     <string name="def_theme_package"></string>
@@ -256,7 +258,4 @@
          1. Right
          2. Left -->
     <integer name="def_qs_quick_pulldown">0</integer>
-
-    <!-- Defaults for Settings.Secure.SPELL_CHECKER_ENABLED. -->
-    <bool name="def_spell_checker">true</bool>
 </resources>

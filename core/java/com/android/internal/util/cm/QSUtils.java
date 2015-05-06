@@ -99,6 +99,7 @@ public class QSUtils {
                 case QSConstants.TILE_COMPASS:
                     removeTile = !deviceSupportsCompass(context);
                     break;
+<<<<<<< HEAD
                 case QSConstants.TILE_AMBIENT_DISPLAY:
                     removeTile = !deviceSupportsDoze(context);
                     break;
@@ -107,6 +108,13 @@ public class QSUtils {
                 iterator.remove();
                 tiles.remove(tileKey);
             }
+=======
+            }
+            if (removeTile) {
+                iterator.remove();
+                tiles.remove(tileKey);
+            }
+>>>>>>> parent of 42b9e02... upstream
         }
     }
 
