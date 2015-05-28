@@ -82,10 +82,7 @@ import com.android.systemui.statusbar.policy.UserSwitcherController;
 import com.android.systemui.statusbar.policy.ZenModeController;
 import com.android.systemui.volume.VolumeComponent;
 
-<<<<<<< HEAD
-=======
 import cyanogenmod.app.CustomTile;
->>>>>>> 5dea9e8... SystemUI: Squash custom tile commits
 import cyanogenmod.app.CustomTileListenerService;
 import cyanogenmod.app.StatusBarPanelCustomTile;
 
@@ -122,10 +119,7 @@ public class QSTileHost implements QSTile.Host {
     private Handler mHandler;
 
     private CustomTileData mCustomTileData;
-<<<<<<< HEAD
     private CustomTileListenerService mCustomTileListenerService;
-=======
->>>>>>> 5dea9e8... SystemUI: Squash custom tile commits
 
     private Callback mCallback;
 
@@ -208,15 +202,12 @@ public class QSTileHost implements QSTile.Host {
 
     @Override
     public void removeCustomTile(StatusBarPanelCustomTile customTile) {
-<<<<<<< HEAD
         if (mCustomTileListenerService != null) {
             mCustomTileListenerService.removeCustomTile(customTile.getPackage(),
                     customTile.getTag(), customTile.getId());
         }
-=======
         mCustomTileListenerService.removeCustomTile(customTile.getPackage(),
                 customTile.getTag(), customTile.getId());
->>>>>>> 5dea9e8... SystemUI: Squash custom tile commits
     }
 
     @Override
