@@ -1,9 +1,5 @@
 <profiles>
     <profile nameres="profileNameDefault">
-        <ringModeDescriptor>
-            <value>normal</value>
-            <override>true</override>
-        </ringModeDescriptor>
     </profile>
     <profile nameres="profileNameSilent">
         <ringModeDescriptor>

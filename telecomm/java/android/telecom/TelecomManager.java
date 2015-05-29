@@ -930,10 +930,10 @@ public class TelecomManager {
      * Returns current active subscription.
      * @hide
      */
-    public int getActiveSubscription() {
+    public long getActiveSubscription() {
         try {
             if (isServiceConnected()) {
-                return (int)getTelecomService().getActiveSubscription();
+                return getTelecomService().getActiveSubscription();
             }
         } catch (RemoteException e) {
             Log.e(TAG, "RemoteException attempting to get the active subsription.", e);
@@ -945,7 +945,7 @@ public class TelecomManager {
      * switches to other active subscription.
      * @hide
      */
-    public void switchToOtherActiveSub(int subId) {
+    public void switchToOtherActiveSub(long subId) {
         try {
             if (isServiceConnected()) {
                 getTelecomService().switchToOtherActiveSub(subId);

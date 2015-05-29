@@ -53,7 +53,6 @@ public class QSUtils {
         return TextUtils.join(",", list);
     }
 
-<<<<<<< HEAD
     private static void filterTiles(Context context) {
         if (!sAvailableTilesFiltered) {
             boolean deviceSupportsMobile = deviceSupportsMobileData(context);
@@ -93,50 +92,6 @@ public class QSUtils {
                 }
             }
 
-    private static void filterTiles(Context context, List<String> tiles) {
-        boolean deviceSupportsMobile = deviceSupportsMobileData(context);
-
-        // Tiles that need conditional filtering
-        Iterator<String> iterator = tiles.iterator();
-        while (iterator.hasNext()) {
-            String tileKey = iterator.next();
-            boolean removeTile = false;
-            switch (tileKey) {
-                case QSConstants.TILE_CELLULAR:
-                case QSConstants.TILE_HOTSPOT:
-                case QSConstants.TILE_DATA:
-                case QSConstants.TILE_ROAMING:
-                case QSConstants.TILE_APN:
-                    removeTile = !deviceSupportsMobile;
-                    break;
-                case QSConstants.TILE_DDS:
-                    removeTile = !deviceSupportsDdsSupported(context);
-                    break;
-                case QSConstants.TILE_FLASHLIGHT:
-                    removeTile = !deviceSupportsFlashLight(context);
-                    break;
-                case QSConstants.TILE_BLUETOOTH:
-                    removeTile = !deviceSupportsBluetooth();
-                    break;
-                case QSConstants.TILE_NFC:
-                    removeTile = !deviceSupportsNfc(context);
-                    break;
-                case QSConstants.TILE_COMPASS:
-                    removeTile = !deviceSupportsCompass(context);
-                    break;
-                case QSConstants.TILE_AMBIENT_DISPLAY:
-                    removeTile = !deviceSupportsDoze(context);
-                    break;
-            }
-            if (removeTile) {
-                iterator.remove();
-            }
-        }
-    }
-
-    private static void filterTiles(Context context) {
-        if (!sAvailableTilesFiltered) {
-            filterTiles(context, QSConstants.TILES_AVAILABLE);
             sAvailableTilesFiltered = true;
         }
     }

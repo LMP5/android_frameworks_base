@@ -163,8 +163,6 @@ public class ExtractEditLayout extends LinearLayout {
             mCallback.onDestroyActionMode(this);
             mCallback = null;
 
-            mMenu.close();
-
             mExtractActionButton.setVisibility(VISIBLE);
             mEditButton.setVisibility(INVISIBLE);
 

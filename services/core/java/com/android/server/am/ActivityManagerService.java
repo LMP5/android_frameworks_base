@@ -1300,11 +1300,10 @@ public final class ActivityManagerService extends ActivityManagerNative
 
     final ServiceThread mHandlerThread;
     final MainHandler mHandler;
-    final UiHandler mUiHandler;
 
-    final class UiHandler extends Handler {
-        public UiHandler() {
-            super(com.android.server.UiThread.get().getLooper(), null, true);
+    final class MainHandler extends Handler {
+        public MainHandler(Looper looper) {
+            super(looper, null, true);
         }
 
         @Override
@@ -1417,6 +1416,15 @@ public final class ActivityManagerService extends ActivityManagerNative
                 d.show();
                 ensureBootCompleted();
             } break;
+            case UPDATE_CONFIGURATION_MSG: {
+                final ContentResolver resolver = mContext.getContentResolver();
+                Settings.System.putConfiguration(resolver, (Configuration)msg.obj);
+            } break;
+            case GC_BACKGROUND_PROCESSES_MSG: {
+                synchronized (ActivityManagerService.this) {
+                    performAppGcsIfAppropriateLocked();
+                }
+            } break;
             case WAIT_FOR_DEBUGGER_MSG: {
                 synchronized (ActivityManagerService.this) {
                     ProcessRecord app = (ProcessRecord)msg.obj;
@@ -1435,88 +1443,6 @@ public final class ActivityManagerService extends ActivityManagerNative
                             app.waitDialog = null;
                         }
                     }
-                }
-            } break;
-            case SHOW_UID_ERROR_MSG: {
-                if (mShowDialogs) {
-                    AlertDialog d = new BaseErrorDialog(mContext);
-                    d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
-                    d.setCancelable(false);
-                    d.setTitle(mContext.getText(R.string.android_system_label));
-                    d.setMessage(mContext.getText(R.string.system_error_wipe_data));
-                    d.setButton(DialogInterface.BUTTON_POSITIVE, mContext.getText(R.string.ok),
-                            obtainMessage(DISMISS_DIALOG_MSG, d));
-                    d.show();
-                }
-            } break;
-            case SHOW_FINGERPRINT_ERROR_MSG: {
-                if (mShowDialogs) {
-                    AlertDialog d = new BaseErrorDialog(mContext);
-                    d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
-                    d.setCancelable(false);
-                    d.setTitle(mContext.getText(R.string.android_system_label));
-                    d.setMessage(mContext.getText(R.string.system_error_manufacturer));
-                    d.setButton(DialogInterface.BUTTON_POSITIVE, mContext.getText(R.string.ok),
-                            obtainMessage(DISMISS_DIALOG_MSG, d));
-                    d.show();
-                }
-            } break;
-            case SHOW_COMPAT_MODE_DIALOG_MSG: {
-                synchronized (ActivityManagerService.this) {
-                    ActivityRecord ar = (ActivityRecord) msg.obj;
-                    if (mCompatModeDialog != null) {
-                        if (mCompatModeDialog.mAppInfo.packageName.equals(
-                                ar.info.applicationInfo.packageName)) {
-                            return;
-                        }
-                        mCompatModeDialog.dismiss();
-                        mCompatModeDialog = null;
-                    }
-                    if (ar != null && false) {
-                        if (mCompatModePackages.getPackageAskCompatModeLocked(
-                                ar.packageName)) {
-                            int mode = mCompatModePackages.computeCompatModeLocked(
-                                    ar.info.applicationInfo);
-                            if (mode == ActivityManager.COMPAT_MODE_DISABLED
-                                    || mode == ActivityManager.COMPAT_MODE_ENABLED) {
-                                mCompatModeDialog = new CompatModeDialog(
-                                        ActivityManagerService.this, mContext,
-                                        ar.info.applicationInfo);
-                                mCompatModeDialog.show();
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-            case START_USER_SWITCH_MSG: {
-                showUserSwitchDialog(msg.arg1, (String) msg.obj);
-                break;
-            }
-            case DISMISS_DIALOG_MSG: {
-                final Dialog d = (Dialog) msg.obj;
-                d.dismiss();
-                break;
-            }
-            }
-        }
-    }
-
-    final class MainHandler extends Handler {
-        public MainHandler(Looper looper) {
-            super(looper, null, true);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-            case UPDATE_CONFIGURATION_MSG: {
-                final ContentResolver resolver = mContext.getContentResolver();
-                Settings.System.putConfiguration(resolver, (Configuration) msg.obj);
-            } break;
-            case GC_BACKGROUND_PROCESSES_MSG: {
-                synchronized (ActivityManagerService.this) {
-                    performAppGcsIfAppropriateLocked();
                 }
             } break;
             case SERVICE_TIMEOUT_MSG: {
@@ -1581,6 +1507,30 @@ public final class ActivityManagerService extends ActivityManagerNative
                             }
                         }
                     }
+                }
+            } break;
+            case SHOW_UID_ERROR_MSG: {
+                if (mShowDialogs) {
+                    AlertDialog d = new BaseErrorDialog(getUiContext());
+                    d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
+                    d.setCancelable(false);
+                    d.setTitle(mContext.getText(R.string.android_system_label));
+                    d.setMessage(mContext.getText(R.string.system_error_wipe_data));
+                    d.setButton(DialogInterface.BUTTON_POSITIVE, mContext.getText(R.string.ok),
+                            mHandler.obtainMessage(DISMISS_DIALOG_MSG, d));
+                    d.show();
+                }
+            } break;
+            case SHOW_FINGERPRINT_ERROR_MSG: {
+                if (mShowDialogs) {
+                    AlertDialog d = new BaseErrorDialog(mContext);
+                    d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
+                    d.setCancelable(false);
+                    d.setTitle(mContext.getText(R.string.android_system_label));
+                    d.setMessage(mContext.getText(R.string.system_error_manufacturer));
+                    d.setButton(DialogInterface.BUTTON_POSITIVE, mContext.getText(R.string.ok),
+                            mHandler.obtainMessage(DISMISS_DIALOG_MSG, d));
+                    d.show();
                 }
             } break;
             case PROC_START_TIMEOUT_MSG: {
@@ -1683,6 +1633,34 @@ public final class ActivityManagerService extends ActivityManagerNative
                     sendMessageDelayed(nmsg, POWER_CHECK_DELAY);
                 }
             } break;
+            case SHOW_COMPAT_MODE_DIALOG_MSG: {
+                synchronized (ActivityManagerService.this) {
+                    ActivityRecord ar = (ActivityRecord)msg.obj;
+                    if (mCompatModeDialog != null) {
+                        if (mCompatModeDialog.mAppInfo.packageName.equals(
+                                ar.info.applicationInfo.packageName)) {
+                            return;
+                        }
+                        mCompatModeDialog.dismiss();
+                        mCompatModeDialog = null;
+                    }
+                    if (ar != null && false) {
+                        if (mCompatModePackages.getPackageAskCompatModeLocked(
+                                ar.packageName)) {
+                            int mode = mCompatModePackages.computeCompatModeLocked(
+                                    ar.info.applicationInfo);
+                            if (mode == ActivityManager.COMPAT_MODE_DISABLED
+                                    || mode == ActivityManager.COMPAT_MODE_ENABLED) {
+                                mCompatModeDialog = new CompatModeDialog(
+                                        ActivityManagerService.this, mContext,
+                                        ar.info.applicationInfo);
+                                mCompatModeDialog.show();
+                            }
+                        }
+                    }
+                }
+                break;
+            }
             case DISPATCH_PROCESSES_CHANGED: {
                 dispatchProcessesChanged();
                 break;
@@ -1701,6 +1679,10 @@ public final class ActivityManagerService extends ActivityManagerNative
                     }
                 };
                 thread.start();
+                break;
+            }
+            case START_USER_SWITCH_MSG: {
+                showUserSwitchDialog(msg.arg1, (String) msg.obj);
                 break;
             }
             case REPORT_USER_SWITCH_MSG: {
@@ -1808,6 +1790,11 @@ public final class ActivityManagerService extends ActivityManagerNative
                 } catch (RemoteException e) {
                     Log.e(TAG, "Error storing locale for decryption UI", e);
                 }
+                break;
+            }
+            case DISMISS_DIALOG_MSG: {
+                final Dialog d = (Dialog) msg.obj;
+                d.dismiss();
                 break;
             }
             case NOTIFY_TASK_STACK_CHANGE_LISTENERS_MSG: {
@@ -2150,7 +2137,6 @@ public final class ActivityManagerService extends ActivityManagerNative
                 android.os.Process.THREAD_PRIORITY_FOREGROUND, false /*allowIo*/);
         mHandlerThread.start();
         mHandler = new MainHandler(mHandlerThread.getLooper());
-        mUiHandler = new UiHandler();
 
         mFgBroadcastQueue = new BroadcastQueue(this, mHandler,
                 "foreground", BROADCAST_FG_TIMEOUT, false);
@@ -2525,7 +2511,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         Message msg = Message.obtain();
         msg.what = SHOW_COMPAT_MODE_DIALOG_MSG;
         msg.obj = r.task.askedCompatMode ? null : r;
-        mUiHandler.sendMessage(msg);
+        mHandler.sendMessage(msg);
     }
 
     private int updateLruProcessInternalLocked(ProcessRecord app, long now, int index,
@@ -5211,20 +5197,20 @@ public final class ActivityManagerService extends ActivityManagerNative
                 map.put("activity", activity);
             }
 
-            mUiHandler.sendMessage(msg);
+            mHandler.sendMessage(msg);
         }
     }
 
     final void showLaunchWarningLocked(final ActivityRecord cur, final ActivityRecord next) {
         if (!mLaunchWarningShown) {
             mLaunchWarningShown = true;
-            mUiHandler.post(new Runnable() {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     synchronized (ActivityManagerService.this) {
                         final Dialog d = new LaunchWarningWindow(getUiContext(), cur, next);
                         d.show();
-                        mUiHandler.postDelayed(new Runnable() {
+                        mHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
                                 synchronized (ActivityManagerService.this) {
@@ -8186,7 +8172,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             msg.what = WAIT_FOR_DEBUGGER_MSG;
             msg.obj = app;
             msg.arg1 = waiting ? 1 : 0;
-            mUiHandler.sendMessage(msg);
+            mHandler.sendMessage(msg);
         }
     }
 
@@ -11495,7 +11481,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                     Message msg = Message.obtain();
                     msg.what = SHOW_FACTORY_ERROR_MSG;
                     msg.getData().putCharSequence("msg", errorMsg);
-                    mUiHandler.sendMessage(msg);
+                    mHandler.sendMessage(msg);
                 }
             }
         }
@@ -11554,14 +11540,14 @@ public final class ActivityManagerService extends ActivityManagerNative
                 if (AppGlobals.getPackageManager().hasSystemUidErrors()) {
                     Slog.e(TAG, "UIDs on the system are inconsistent, you need to wipe your"
                             + " data partition or your device will be unstable.");
-                    mUiHandler.obtainMessage(SHOW_UID_ERROR_MSG).sendToTarget();
+                    mHandler.obtainMessage(SHOW_UID_ERROR_MSG).sendToTarget();
                 }
             } catch (RemoteException e) {
             }
 
             if (!Build.isFingerprintConsistent()) {
                 Slog.e(TAG, "Build fingerprint is not consistent, warning user");
-                mUiHandler.obtainMessage(SHOW_FINGERPRINT_ERROR_MSG).sendToTarget();
+                mHandler.obtainMessage(SHOW_FINGERPRINT_ERROR_MSG).sendToTarget();
             }
 
             long ident = Binder.clearCallingIdentity();
@@ -11893,7 +11879,7 @@ public final class ActivityManagerService extends ActivityManagerNative
                 data.put("violationMask", violationMask);
                 data.put("info", info);
                 msg.obj = data;
-                mUiHandler.sendMessage(msg);
+                mHandler.sendMessage(msg);
 
                 Binder.restoreCallingIdentity(origId);
             }
@@ -12344,7 +12330,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             data.put("result", result);
             data.put("app", r);
             msg.obj = data;
-            mUiHandler.sendMessage(msg);
+            mHandler.sendMessage(msg);
 
             Binder.restoreCallingIdentity(origId);
         }
@@ -15060,7 +15046,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
 
-        for (int i = cpr.connections.size() - 1; i >= 0; i--) {
+        for (int i=0; i<cpr.connections.size(); i++) {
             ContentProviderConnection conn = cpr.connections.get(i);
             if (conn.waiting) {
                 // If this connection is waiting for the provider, then we don't
@@ -15152,11 +15138,10 @@ public final class ActivityManagerService extends ActivityManagerNative
         boolean restart = false;
 
         // Remove published content providers.
-        for (int i = app.pubProviders.size() - 1; i >= 0; i--) {
+        for (int i=app.pubProviders.size()-1; i>=0; i--) {
             ContentProviderRecord cpr = app.pubProviders.valueAt(i);
             final boolean always = app.bad || !allowRestart;
-            boolean inLaunching = removeDyingProviderLocked(app, cpr, always);
-            if ((inLaunching || always) && cpr.hasConnectionOrHandle()) {
+            if (removeDyingProviderLocked(app, cpr, always) || always) {
                 // We left the provider in the launching list, need to
                 // restart it.
                 restart = true;
@@ -15174,7 +15159,7 @@ public final class ActivityManagerService extends ActivityManagerNative
 
         // Unregister from connected content providers.
         if (!app.conProviders.isEmpty()) {
-            for (int i = app.conProviders.size() - 1; i >= 0; i--) {
+            for (int i=0; i<app.conProviders.size(); i++) {
                 ContentProviderConnection conn = app.conProviders.get(i);
                 conn.provider.connections.remove(conn);
                 stopAssociationLocked(app.uid, app.processName, conn.provider.uid,
@@ -15189,8 +15174,9 @@ public final class ActivityManagerService extends ActivityManagerNative
         // XXX Commented out for now.  Trying to figure out a way to reproduce
         // the actual situation to identify what is actually going on.
         if (false) {
-            for (int i = mLaunchingProviders.size() - 1; i >= 0; i--) {
-                ContentProviderRecord cpr = mLaunchingProviders.get(i);
+            for (int i=0; i<mLaunchingProviders.size(); i++) {
+                ContentProviderRecord cpr = (ContentProviderRecord)
+                        mLaunchingProviders.get(i);
                 if (cpr.connections.size() <= 0 && !cpr.hasExternalProcessHandles()) {
                     synchronized (cpr) {
                         cpr.launchingApp = null;
@@ -15203,7 +15189,7 @@ public final class ActivityManagerService extends ActivityManagerNative
         skipCurrentReceiverLocked(app);
 
         // Unregister any receivers.
-        for (int i = app.receivers.size() - 1; i >= 0; i--) {
+        for (int i=app.receivers.size()-1; i>=0; i--) {
             removeReceiverLocked(app.receivers.valueAt(i));
         }
         app.receivers.clear();
@@ -15221,7 +15207,7 @@ public final class ActivityManagerService extends ActivityManagerNative
             }
         }
 
-        for (int i = mPendingProcessChanges.size() - 1; i >= 0; i--) {
+        for (int i = mPendingProcessChanges.size()-1; i>=0; i--) {
             ProcessChangeItem item = mPendingProcessChanges.get(i);
             if (item.pid == app.pid) {
                 mPendingProcessChanges.remove(i);
@@ -15296,14 +15282,18 @@ public final class ActivityManagerService extends ActivityManagerNative
         // and if any run in this process then either schedule a restart of
         // the process or kill the client waiting for it if this process has
         // gone bad.
+        int NL = mLaunchingProviders.size();
         boolean restart = false;
-        for (int i = mLaunchingProviders.size() - 1; i >= 0; i--) {
+        for (int i=0; i<NL; i++) {
             ContentProviderRecord cpr = mLaunchingProviders.get(i);
             if (cpr.launchingApp == app) {
-                if (!alwaysBad && !app.bad && cpr.hasConnectionOrHandle()) {
+                if (!alwaysBad && !app.bad) {
                     restart = true;
                 } else {
                     removeDyingProviderLocked(app, cpr, true);
+                    // cpr should have been removed from mLaunchingProviders
+                    NL = mLaunchingProviders.size();
+                    i--;
                 }
             }
         }
@@ -15874,9 +15864,8 @@ public final class ActivityManagerService extends ActivityManagerNative
         }
 
         synchronized (this) {
-            if (callerApp != null && (callerApp.thread == null
-                    || callerApp.thread.asBinder() != caller.asBinder())) {
-                // Original caller already died
+            if (callerApp != null && callerApp.pid == 0) {
+                // Caller already died
                 return null;
             }
             ReceiverList rl
@@ -19175,8 +19164,8 @@ public final class ActivityManagerService extends ActivityManagerNative
             userName = userInfo.name;
             mTargetUserId = userId;
         }
-        mUiHandler.removeMessages(START_USER_SWITCH_MSG);
-        mUiHandler.sendMessage(mUiHandler.obtainMessage(START_USER_SWITCH_MSG, userId, 0, userName));
+        mHandler.removeMessages(START_USER_SWITCH_MSG);
+        mHandler.sendMessage(mHandler.obtainMessage(START_USER_SWITCH_MSG, userId, 0, userName));
         return true;
     }
 

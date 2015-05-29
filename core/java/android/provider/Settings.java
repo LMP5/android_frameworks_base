@@ -2465,15 +2465,6 @@ public final class Settings {
         public static final String DEFAULT_RINGTONE = "ringtone_default";
 
         /**
-         * Call recording format value
-         * 0: AMR_WB
-         * 1: MPEG_4
-         * Default: 0
-         * @hide
-         */
-        public static final String CALL_RECORDING_FORMAT = "call_recording_format";          
-
-        /**
          * Persistent store for the system-wide default ringtone URI.
          * <p>
          * If you need to play the default ringtone at any given time, it is recommended
@@ -3547,25 +3538,6 @@ public final class Settings {
          */
         public static final String VOLUME_KEYS_CONTROL_RING_STREAM =
                 "volume_keys_control_ring_stream";
-
-        /**
-         * This preference enables showing the power menu on LockScreen.
-         * @hide
-         */
-        public static final String LOCKSCREEN_ENABLE_POWER_MENU = "lockscreen_enable_power_menu";
-
-        /**
-         * Whether to use the proximity sensor to turn the screen on/off during a call
-         * @hide
-         */
-        public static final String IN_CALL_PROXIMITY_SENSOR = "in_call_proximity_sensor";
-
-        /**
-         * The statusbar configuration to be used for its creation in SystemUI
-         * Fallback is the config_statusBarComponent value
-         * @hide
-         */
-        public static final String STATUSBAR_COMPONENT = "statusbar_component";
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings

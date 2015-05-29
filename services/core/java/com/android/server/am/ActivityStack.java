@@ -783,10 +783,7 @@ final class ActivityStack {
         if (mPausingActivity != null) {
             Slog.wtf(TAG, "Going to pause when pause is already pending for " + mPausingActivity
                     + " state=" + mPausingActivity.state);
-            if (!mService.isSleeping()) {
-                // Avoid recursion among check for sleep and complete pause during sleeping.
-                // Because activity will be paused immediately after resume, just let pause
-                // be completed by the order of activity paused from clients.
+            if (mPausingActivity.state == ActivityState.PAUSING) {
                 completePauseLocked(false);
             }
         }
@@ -906,11 +903,6 @@ final class ActivityStack {
                         r.userId, System.identityHashCode(r), r.shortComponentName,
                         mPausingActivity != null
                             ? mPausingActivity.shortComponentName : "(none)");
-                if (r.finishing && r.state == ActivityState.PAUSING) {
-                    if (DEBUG_PAUSE) Slog.v(TAG,
-                            "Executing finish of failed to pause activity: " + r);
-                    finishCurrentActivityLocked(r, FINISH_AFTER_VISIBLE, false);
-                }
             }
         }
     }

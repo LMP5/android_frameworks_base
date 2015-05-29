@@ -27,7 +27,6 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.provider.AlarmClock;
 import android.provider.Settings;
-import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
 import android.util.AttributeSet;

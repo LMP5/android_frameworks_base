@@ -369,8 +369,7 @@ public class Typeface {
         }
 
         try {
-            FontListParser.Config fontConfig = FontListParser.parse(configFile,
-                    fontDir.getAbsolutePath());
+            FontListParser.Config fontConfig = FontListParser.parse(configFile, fontDir);
             FontListParser.Config systemFontConfig = null;
 
             // If the fonts are coming from a theme, we will need to make sure that we include
@@ -378,7 +377,7 @@ public class Typeface {
             // NOTE: All the system font families without names ALWAYS get added.
             if (configFile == themeConfigFile) {
                 systemFontConfig = FontListParser.parse(systemConfigFile,
-                        getSystemFontDirLocation().getAbsolutePath());
+                        getSystemFontDirLocation());
                 addMissingFontFamilies(systemFontConfig, fontConfig);
                 addMissingFontAliases(systemFontConfig, fontConfig);
                 addFallbackFontsForFamilyName(systemFontConfig, fontConfig, SANS_SERIF_FAMILY_NAME);
@@ -429,11 +428,11 @@ public class Typeface {
             Log.w(TAG, "Didn't create default family (most likely, non-Minikin build)", e);
             // TODO: normal in non-Minikin case, remove or make error when Minikin-only
         } catch (FileNotFoundException e) {
-            Log.e(TAG, "Error opening " + configFile, e);
+            Log.e(TAG, "Error opening " + configFile);
         } catch (IOException e) {
-            Log.e(TAG, "Error reading " + configFile, e);
+            Log.e(TAG, "Error reading " + configFile);
         } catch (XmlPullParserException e) {
-            Log.e(TAG, "XML parse exception for " + configFile, e);
+            Log.e(TAG, "XML parse exception for " + configFile);
         }
     }
 
