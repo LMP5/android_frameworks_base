@@ -36,6 +36,7 @@ public class QSConstants {
     public static final String TILE_ROAMING = "roaming";
     public static final String TILE_DDS = "dds";
     public static final String TILE_APN = "apn";
+    public static final String TILE_REBOOT = "reboot";
     public static final String TILE_PROFILES = "profiles";
     public static final String TILE_PERFORMANCE = "performance";
     public static final String TILE_ADB_NETWORK = "adb_network";
@@ -47,27 +48,22 @@ public class QSConstants {
     public static final String TILE_SCREEN_TIMEOUT = "screen_timeout";
     public static final String TILE_LIVE_DISPLAY = "live_display";
     public static final String TILE_USB_TETHER = "usb_tether";
+    public static final String TILE_SCREENSHOT = "screenshot";
     public static final String TILE_HEADS_UP = "heads_up";
     public static final String TILE_AMBIENT_DISPLAY = "ambient_display";
-
-    // Order matters
-    protected static final ArrayList<String> TILES_DEFAULT = new ArrayList<String>();
-
-    static {
-        TILES_DEFAULT.add(TILE_WIFI);
-        TILES_DEFAULT.add(TILE_BLUETOOTH);
-        TILES_DEFAULT.add(TILE_CELLULAR);
-        TILES_DEFAULT.add(TILE_AIRPLANE);
-        TILES_DEFAULT.add(TILE_ROTATION);
-        TILES_DEFAULT.add(TILE_FLASHLIGHT);
-        TILES_DEFAULT.add(TILE_LOCATION);
-        TILES_DEFAULT.add(TILE_CAST);
-    }
+    public static final String TILE_SYNC = "sync";
 
     protected static final ArrayList<String> TILES_AVAILABLE = new ArrayList<String>();
 
     static {
-        TILES_AVAILABLE.addAll(TILES_DEFAULT);
+        TILES_AVAILABLE.add(TILE_WIFI);
+        TILES_AVAILABLE.add(TILE_BLUETOOTH);
+        TILES_AVAILABLE.add(TILE_CELLULAR);
+        TILES_AVAILABLE.add(TILE_AIRPLANE);
+        TILES_AVAILABLE.add(TILE_ROTATION);
+        TILES_AVAILABLE.add(TILE_FLASHLIGHT);
+        TILES_AVAILABLE.add(TILE_LOCATION);
+        TILES_AVAILABLE.add(TILE_CAST);
         TILES_AVAILABLE.add(TILE_INVERSION);
         TILES_AVAILABLE.add(TILE_HOTSPOT);
         TILES_AVAILABLE.add(TILE_NOTIFICATIONS);
@@ -83,10 +79,13 @@ public class QSConstants {
         TILES_AVAILABLE.add(TILE_LOCKSCREEN);
         TILES_AVAILABLE.add(TILE_LTE);
         TILES_AVAILABLE.add(TILE_VISUALIZER);
+        TILES_AVAILABLE.add(TILE_REBOOT);
         TILES_AVAILABLE.add(TILE_SCREEN_TIMEOUT);
         TILES_AVAILABLE.add(TILE_LIVE_DISPLAY);
         TILES_AVAILABLE.add(TILE_USB_TETHER);
+        TILES_AVAILABLE.add(TILE_SCREENSHOT);
         TILES_AVAILABLE.add(TILE_HEADS_UP);
         TILES_AVAILABLE.add(TILE_AMBIENT_DISPLAY);
+        TILES_AVAILABLE.add(TILE_SYNC);
     }
 }
